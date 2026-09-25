@@ -8,6 +8,7 @@
 - `public/index.html` — зміст українською; китайські приклади з піньїнем і перекладом.
 - `public/pinyin-tones.html` — окремий урок про піньїнь і тони.
 - `public/first-phrases.html` — урок про вітання та знайомство.
+- `public/numbers-prices.html` — урок про числа, ціни та покупки.
 - `public/styles.css` — адаптивні стилі та доступність.
 - `public/script.js` — меню, синтез мовлення та копіювання.
 - `public/favicon.svg` — іконка.

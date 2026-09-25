@@ -985,6 +985,59 @@ a:focus-visible, button:focus-visible {
   font-weight: 700;
   text-underline-offset: 4px;
 }
+.course-track {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 28px;
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+}
+.course-track-label {
+  grid-column: 1 / -1;
+  color: #4b5563;
+  font-size: 13px;
+  font-weight: 700;
+}
+.course-track a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.course-track a:hover {
+  background: #fee2e2;
+  color: #991b1b;
+}
+.course-track a[aria-current="step"] {
+  background: #111827;
+  color: #fff;
+}
+.lesson-pager {
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 18px;
+}
+.lesson-pager a {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.lesson-pager a:last-child {
+  text-align: right;
+}
+.lesson-pager a span {
+  color: #d1d5db;
+  font-size: 13px;
+  font-weight: 500;
+}
 @media (max-width: 560px) {
   .article-page {
     padding-top: 24px;
@@ -1003,5 +1056,16 @@ a:focus-visible, button:focus-visible {
   }
   .article-section .bubble {
     max-width: 96%;
+  }
+  .course-track {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .course-track-label {
+    grid-column: auto;
+    padding: 4px 8px;
+  }
+  .lesson-pager a {
+    font-size: 16px;
   }
 }
