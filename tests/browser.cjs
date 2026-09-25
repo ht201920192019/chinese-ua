@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
-const root = path.resolve(__dirname, '..');
+const root = path.resolve(__dirname, '..', 'public');
 const files = new Set(['index.html', 'styles.css', 'script.js', 'favicon.svg']);
 const server = http.createServer((req, res) => {
   const name = new URL(req.url, 'http://localhost').pathname.slice(1) || 'index.html';
