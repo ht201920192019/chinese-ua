@@ -6,6 +6,8 @@
 ## Файли
 
 - `public/index.html` — зміст українською; китайські приклади з піньїнем і перекладом.
+- `public/pinyin-tones.html` — окремий урок про піньїнь і тони.
+- `public/first-phrases.html` — урок про вітання та знайомство.
 - `public/styles.css` — адаптивні стилі та доступність.
 - `public/script.js` — меню, синтез мовлення та копіювання.
 - `public/favicon.svg` — іконка.
@@ -51,9 +53,9 @@ Worker: `red-breeze-15ec`.
 ## Google Search
 
 Після публікації перевірте `https://chinese-ua.pp.ua/robots.txt` та
-`https://chinese-ua.pp.ua/sitemap.xml`. У Google Search Console додайте
-властивість `https://chinese-ua.pp.ua/`, підтвердьте право власності,
-подайте `sitemap.xml` і перевірте головну сторінку через URL Inspection.
+`https://chinese-ua.pp.ua/sitemap.xml`. У Google Search Console використовуйте
+підтверджену властивість домену `chinese-ua.pp.ua`, подайте карту сайту й
+перевірте головну сторінку та уроки через URL Inspection.
 Після цього можна попросити індексацію. Подання карти сайту й запит на
 індексацію не гарантують появи сторінки в результатах пошуку.
 

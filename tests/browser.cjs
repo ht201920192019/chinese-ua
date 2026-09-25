@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
 const root = path.resolve(__dirname, '..', 'public');
-const files = new Set(['index.html', 'styles.css', 'script.js', 'favicon.svg', 'robots.txt', 'sitemap.xml']);
+const files = new Set(['index.html', 'pinyin-tones.html', 'first-phrases.html', 'styles.css', 'script.js', 'favicon.svg', 'robots.txt', 'sitemap.xml']);
 const server = http.createServer((req, res) => {
   const name = new URL(req.url, 'http://localhost').pathname.slice(1) || 'index.html';
   if (!files.has(name)) { res.writeHead(404); return res.end(); }
@@ -25,7 +25,27 @@ const server = http.createServer((req, res) => {
     for (const file of files) assert.equal((await page.request.get(`${url}/${file}`)).status(), 200);
     assert.equal(await page.locator('link[rel="canonical"]').getAttribute('href'), 'https://chinese-ua.pp.ua/');
     assert.match(await (await page.request.get(`${url}/robots.txt`)).text(), /Sitemap: https:\/\/chinese-ua\.pp\.ua\/sitemap\.xml/);
-    assert.match(await (await page.request.get(`${url}/sitemap.xml`)).text(), /<loc>https:\/\/chinese-ua\.pp\.ua\/<\/loc>/);
+    const sitemap = await (await page.request.get(`${url}/sitemap.xml`)).text();
+    for (const pathname of ['/', '/pinyin-tones.html', '/first-phrases.html']) {
+      assert.ok(sitemap.includes(`<loc>https://chinese-ua.pp.ua${pathname}</loc>`), `missing sitemap URL: ${pathname}`);
+    }
+    for (const lesson of ['pinyin-tones.html', 'first-phrases.html']) {
+      const lessonPage = await browser.newPage({viewport:{width:320,height:812}});
+      await lessonPage.goto(`${url}/${lesson}`);
+      assert.equal(await lessonPage.locator('html').getAttribute('lang'), 'uk');
+      assert.equal(await lessonPage.locator('h1').count(), 1);
+      assert.equal(await lessonPage.locator('link[rel="canonical"]').getAttribute('href'), `https://chinese-ua.pp.ua/${lesson}`);
+      const targets = await lessonPage.locator('a[href]').evaluateAll(links => links.map(link => ({href:link.getAttribute('href'),target:link.hash && link.pathname===location.pathname ? Boolean(document.getElementById(link.hash.slice(1))) : true})));
+      assert.ok(targets.every(item=>item.target), `broken anchor in ${lesson}`);
+      for (const {href} of targets.filter(item=>!item.href.startsWith('#'))) {
+        assert.equal((await lessonPage.request.get(new URL(href, `${url}/${lesson}`).href)).status(), 200, `${lesson}: ${href}`);
+      }
+      for (const width of [320,390,768,1440]) {
+        await lessonPage.setViewportSize({width,height:812});
+        assert.ok(await lessonPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth), `${lesson} overflow at ${width}`);
+      }
+      await lessonPage.close();
+    }
     assert.equal(await page.locator('h1').count(), 1);
     assert.equal(await page.locator('html').getAttribute('lang'), 'uk');
     assert.equal(await page.locator('#actionStatus').isVisible(), false);
@@ -42,9 +62,9 @@ const server = http.createServer((req, res) => {
     await page.setViewportSize({width:375,height:812});
     await page.locator('#menuButton').click();
     assert.equal(await page.locator('#menuButton').getAttribute('aria-expanded'),'true');
-    await page.locator('#navLinks a[href="#pinyin"]').click();
+    await page.locator('#navLinks a[href="#hsk"]').click();
     assert.equal(await page.locator('#menuButton').getAttribute('aria-expanded'),'false');
-    assert.ok(await page.locator('#pinyin').evaluate(el=>el.getBoundingClientRect().top >= document.querySelector('.site-header').getBoundingClientRect().bottom));
+    assert.ok(await page.locator('#hsk').evaluate(el=>el.getBoundingClientRect().top >= document.querySelector('.site-header').getBoundingClientRect().bottom));
     await page.locator('#menuButton').click();
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('#menuButton').getAttribute('aria-expanded'),'false');

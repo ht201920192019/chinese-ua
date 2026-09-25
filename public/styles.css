@@ -868,3 +868,140 @@ a:focus-visible, button:focus-visible {
     scroll-behavior: auto;
   }
 }
+
+/* Focused lessons use the same typography and colors as the home page. */
+.article-page {
+  background: linear-gradient(180deg, #fff7f7 0, #fff 330px);
+  padding: 38px 0 88px;
+}
+.article-layout {
+  max-width: 860px;
+}
+.breadcrumbs {
+  margin-bottom: 44px;
+  color: #4b5563;
+  font-size: 14px;
+}
+.breadcrumbs a {
+  text-underline-offset: 3px;
+}
+.article-page h1 {
+  font-size: clamp(34px, 6vw, 58px);
+  line-height: 1.12;
+  letter-spacing: -.035em;
+  margin: 18px 0;
+}
+.article-lead {
+  color: #374151;
+  font-size: 19px;
+  max-width: 720px;
+}
+.article-index {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 22px;
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 18px 22px;
+  margin: 38px 0 0;
+}
+.article-index a {
+  color: #b91c1c;
+  font-weight: 700;
+}
+.article-section {
+  padding-top: 62px;
+  scroll-margin-top: 110px;
+}
+.article-section h2 {
+  font-size: clamp(26px, 4vw, 34px);
+  line-height: 1.2;
+  margin: 0 0 18px;
+}
+.article-section p {
+  max-width: 740px;
+}
+.article-example {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 18px 22px;
+  margin: 18px 0;
+}
+.article-example b {
+  font-size: 30px;
+}
+.phrase-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.phrase-list .article-example {
+  margin: 0;
+}
+.article-section .tone-grid {
+  margin: 26px 0;
+}
+.article-section .bubble .reading {
+  color: #b91c1c;
+}
+.article-section .bubble.right .reading {
+  color: #fca5a5;
+}
+.article-section .bubble.right.learning-item > span:last-child {
+  color: #fff;
+}
+.article-section .bubble.left.learning-item > span:last-child {
+  color: #374151;
+}
+.answer {
+  max-width: 740px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 14px;
+  padding: 15px 20px;
+}
+.answer summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.lesson-next {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #111827;
+  color: #fff;
+  border-radius: 22px;
+  padding: 26px;
+  margin-top: 72px;
+}
+.lesson-next span {
+  color: #d1d5db;
+}
+.lesson-next a {
+  font-size: 20px;
+  font-weight: 700;
+  text-underline-offset: 4px;
+}
+@media (max-width: 560px) {
+  .article-page {
+    padding-top: 24px;
+  }
+  .breadcrumbs {
+    margin-bottom: 28px;
+  }
+  .article-lead {
+    font-size: 17px;
+  }
+  .article-section {
+    padding-top: 48px;
+  }
+  .phrase-list {
+    grid-template-columns: 1fr;
+  }
+  .article-section .bubble {
+    max-width: 96%;
+  }
+}
