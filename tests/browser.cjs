@@ -4,11 +4,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
 const root = path.resolve(__dirname, '..', 'public');
-const files = new Set(['index.html', 'styles.css', 'script.js', 'favicon.svg']);
+const files = new Set(['index.html', 'styles.css', 'script.js', 'favicon.svg', 'robots.txt', 'sitemap.xml']);
 const server = http.createServer((req, res) => {
   const name = new URL(req.url, 'http://localhost').pathname.slice(1) || 'index.html';
   if (!files.has(name)) { res.writeHead(404); return res.end(); }
-  res.setHeader('Content-Type', ({html:'text/html; charset=utf-8', css:'text/css', js:'text/javascript', svg:'image/svg+xml'})[name.split('.').pop()]);
+  res.setHeader('Content-Type', ({html:'text/html; charset=utf-8', css:'text/css', js:'text/javascript', svg:'image/svg+xml', txt:'text/plain; charset=utf-8', xml:'application/xml'})[name.split('.').pop()]);
   res.end(fs.readFileSync(path.join(root, name)));
 });
 (async () => {
@@ -23,6 +23,9 @@ const server = http.createServer((req, res) => {
     const broken = await page.evaluate(() => [...document.querySelectorAll('a[href^="#"]')].filter(a => !document.getElementById(a.hash.slice(1))).map(a=>a.href));
     assert.deepEqual(broken, []);
     for (const file of files) assert.equal((await page.request.get(`${url}/${file}`)).status(), 200);
+    assert.equal(await page.locator('link[rel="canonical"]').getAttribute('href'), 'https://chinese-ua.pp.ua/');
+    assert.match(await (await page.request.get(`${url}/robots.txt`)).text(), /Sitemap: https:\/\/chinese-ua\.pp\.ua\/sitemap\.xml/);
+    assert.match(await (await page.request.get(`${url}/sitemap.xml`)).text(), /<loc>https:\/\/chinese-ua\.pp\.ua\/<\/loc>/);
     assert.equal(await page.locator('h1').count(), 1);
     assert.equal(await page.locator('html').getAttribute('lang'), 'uk');
     assert.equal(await page.locator('#actionStatus').isVisible(), false);
