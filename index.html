@@ -1,75 +1,429 @@
 <!doctype html>
 <html lang="uk">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="Chinese UA — китайська мова для українців. Піньїнь, HSK, слова та діалоги." />
-  <meta name="theme-color" content="#0f172a" />
-  <title>Chinese UA — Китайська мова для українців</title>
-  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-  <header class="site-header">
-    <div class="container nav-wrap">
-      <a class="brand" href="#top"><span class="brand-mark">中</span><span><strong>Chinese UA</strong><small>Китайська для українців</small></span></a>
-      <button class="menu-button" id="menuButton" aria-expanded="false" aria-controls="navLinks">☰</button>
-      <nav id="navLinks" class="nav-links"><a href="#start">З нуля</a><a href="#pinyin">Піньїнь</a><a href="#hsk">HSK 1</a><a href="#words">Слова</a><a href="#dialogues">Діалоги</a></nav>
-    </div>
-  </header>
-
-  <main id="top">
-    <section class="hero">
-      <div class="container hero-grid">
-        <div>
-          <div class="eyebrow">🇺🇦 Українською • 🇨🇳 Китайською</div>
-          <h1>Китайська мова<br><span>для українців</span></h1>
-          <p class="hero-copy">Почніть із нуля: вимова, піньїнь, базові слова, HSK та живі діалоги. Кожен приклад має китайські ієрогліфи, pinyin і пояснення українською.</p>
-          <div class="hero-actions"><a class="button primary" href="#start">Почати безкоштовно</a><a class="button secondary" href="#daily">Фраза дня</a></div>
-          <div class="hero-stats"><div><strong>0 ₴</strong><span>за старт</span></div><div><strong>4 тони</strong><span>основа вимови</span></div><div><strong>HSK 1</strong><span>перший рівень</span></div></div>
-        </div>
-        <div class="hero-card">
-          <div class="card-label">Сьогодні вивчаємо</div>
-          <div class="hanzi">你好</div><div class="pinyin">nǐ hǎo</div><div class="translation">Привіт</div>
-          <div class="mini-rule"><span>你</span> — ти<br><span>好</span> — добре</div>
-          <button class="audio-demo" id="speakNihao">▶ Прослухати</button>
-          <small class="hint">Використовує голос вашого браузера, якщо він доступний.</small>
-        </div>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Chinese UA — китайська мова для українців. Піньїнь, HSK, слова та діалоги." />
+    <meta name="theme-color" content="#0f172a" />
+    <title>Chinese UA — Китайська мова для українців</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#top">Перейти до вмісту</a>
+    <header class="site-header">
+      <div class="container nav-wrap">
+        <a class="brand" href="#top">
+          <span class="brand-mark">中</span>
+          <span>
+            <strong>Chinese UA</strong>
+            <small>Китайська для українців</small>
+          </span>
+        </a>
+        <button type="button" class="menu-button" id="menuButton" aria-label="Відкрити меню" aria-expanded="false" aria-controls="navLinks" hidden>☰</button>
+        <nav id="navLinks" class="nav-links" aria-label="Основна навігація">
+          <a href="#start">З нуля</a>
+          <a href="#pinyin">Піньїнь</a>
+          <a href="#hsk">HSK 1</a>
+          <a href="#words">Слова</a>
+          <a href="#dialogues">Діалоги</a>
+        </nav>
       </div>
-    </section>
-
-    <section class="section" id="start"><div class="container"><div class="section-heading"><span>01</span><div><h2>Китайська з нуля</h2><p>Перші кроки без перевантаження теорією.</p></div></div><div class="cards three">
-      <article class="lesson-card"><div class="icon">声</div><h3>Вимова</h3><p>Навчіться розрізняти китайські звуки, склади та чотири основні тони.</p><a href="#pinyin">Відкрити урок →</a></article>
-      <article class="lesson-card"><div class="icon">字</div><h3>Ієрогліфи</h3><p>Розумійте будову знаків через ключі, компоненти й прості асоціації.</p><a href="#words">Подивитися приклади →</a></article>
-      <article class="lesson-card"><div class="icon">说</div><h3>Жива мова</h3><p>Вивчайте фрази для знайомства, магазину, кафе, роботи та подорожей.</p><a href="#dialogues">До діалогів →</a></article>
-    </div></div></section>
-
-    <section class="section soft" id="pinyin"><div class="container"><div class="section-heading"><span>02</span><div><h2>Піньїнь і тони</h2><p>Pinyin — латинська система запису китайської вимови.</p></div></div><div class="tone-grid">
-      <div class="tone"><b>mā</b><span>1-й тон</span><small>рівний високий</small></div><div class="tone"><b>má</b><span>2-й тон</span><small>висхідний</small></div><div class="tone"><b>mǎ</b><span>3-й тон</span><small>низький / ламаний</small></div><div class="tone"><b>mà</b><span>4-й тон</span><small>різко спадний</small></div>
-    </div><div class="note"><strong>Приклад:</strong> 妈 mā = мама, 麻 má = коноплі, 马 mǎ = кінь, 骂 mà = сварити. Тон може повністю змінити значення слова.</div></div></section>
-
-    <section class="section" id="hsk"><div class="container"><div class="section-heading"><span>03</span><div><h2>HSK 1 — стартовий словник</h2><p>Почніть із найуживаніших слів і коротких речень.</p></div></div><div class="word-table-wrap"><table class="word-table"><thead><tr><th>中文</th><th>Pinyin</th><th>Українською</th><th>Приклад</th></tr></thead><tbody>
-      <tr><td>我</td><td>wǒ</td><td>я</td><td>我是学生。— Я студент.</td></tr><tr><td>你</td><td>nǐ</td><td>ти</td><td>你好吗？— Як ти?</td></tr><tr><td>好</td><td>hǎo</td><td>добре</td><td>很好。— Дуже добре.</td></tr><tr><td>是</td><td>shì</td><td>бути / є</td><td>他是老师。— Він викладач.</td></tr><tr><td>不</td><td>bù</td><td>не</td><td>我不是老师。— Я не викладач.</td></tr><tr><td>谢谢</td><td>xièxie</td><td>дякую</td><td>谢谢你。— Дякую тобі.</td></tr>
-    </tbody></table></div></div></section>
-
-    <section class="section soft" id="words"><div class="container"><div class="section-heading"><span>04</span><div><h2>Тематичні слова</h2><p>Вчіть слова блоками — так їх легше використовувати в реальному житті.</p></div></div><div class="cards four">
-      <div class="topic-card"><b>👋</b><strong>Знайомство</strong><span>你好 · 名字 · 中国 · 乌克兰</span></div><div class="topic-card"><b>🍜</b><strong>Їжа</strong><span>米饭 · 水 · 茶 · 鸡肉</span></div><div class="topic-card"><b>🚌</b><strong>Транспорт</strong><span>车 · 地铁 · 火车 · 飞机</span></div><div class="topic-card"><b>💼</b><strong>Робота</strong><span>公司 · 工作 · 同事 · 经理</span></div>
-    </div></div></section>
-
-    <section class="section" id="dialogues"><div class="container"><div class="section-heading"><span>05</span><div><h2>Міні-діалог</h2><p>Знайомство китайською — простий шаблон для першої розмови.</p></div></div><div class="dialogue">
-      <div class="bubble left"><small>A</small><b>你好！你叫什么名字？</b><span>Nǐ hǎo! Nǐ jiào shénme míngzi?</span><em>Привіт! Як тебе звати?</em></div>
-      <div class="bubble right"><small>B</small><b>我叫安娜。你呢？</b><span>Wǒ jiào Ānnà. Nǐ ne?</span><em>Мене звати Анна. А тебе?</em></div>
-      <div class="bubble left"><small>A</small><b>我叫马克。很高兴认识你！</b><span>Wǒ jiào Mǎkè. Hěn gāoxìng rènshi nǐ!</span><em>Мене звати Марк. Дуже приємно познайомитися!</em></div>
-    </div></div></section>
-
-    <section class="section daily" id="daily"><div class="container daily-card"><div><div class="eyebrow">Фраза дня</div><h2>我想学中文。</h2><p class="big-pinyin">Wǒ xiǎng xué Zhōngwén.</p><p>Я хочу вивчати китайську мову.</p></div><div class="daily-actions"><button class="button primary" id="speakDaily">▶ Прослухати</button><button class="button secondary" id="copyDaily">Копіювати</button></div></div></section>
-
-    <section class="section roadmap"><div class="container"><div class="section-heading"><span>→</span><div><h2>Що буде далі</h2><p>Це тестова версія Chinese UA. Наступні модулі можна додати без зміни домену.</p></div></div><div class="roadmap-list">
-      <div><span>01</span><p><b>Повний HSK 1</b><br>уроки, словник і міні-тести</p></div><div><span>02</span><p><b>Тренажер тонів</b><br>прослуховування та повторення</p></div><div><span>03</span><p><b>Картки слів</b><br>повторення за темами</p></div><div><span>04</span><p><b>Особистий прогрес</b><br>після додавання акаунтів</p></div>
-    </div></div></section>
-  </main>
-
-  <footer><div class="container footer-wrap"><div><strong>Chinese UA</strong><p>Китайська мова для українців.</p></div><div class="footer-badge">中文 · Українська</div></div></footer>
-  <script src="script.js"></script>
-</body>
+    </header>
+    <main id="top" tabindex="-1">
+      <section class="hero">
+        <div class="container hero-grid">
+          <div>
+            <div class="eyebrow">🇺🇦 Українською • 🇨🇳 Китайською</div>
+            <h1>Китайська мова<br>
+              <span>для українців</span>
+            </h1>
+            <p class="hero-copy">Почніть із нуля: вимова, піньїнь, базові слова, HSK та живі діалоги. Кожен приклад має китайські ієрогліфи, pinyin і пояснення українською.</p>
+            <div class="hero-actions">
+              <a class="button primary" href="#start">Почати навчання</a>
+              <a class="button secondary" href="#daily">Фраза для практики</a>
+            </div>
+            <div class="hero-stats">
+              <div>
+                <strong>0 ₴</strong>
+                <span>за старт</span>
+              </div>
+              <div>
+                <strong>4 тони</strong>
+                <span>основа вимови</span>
+              </div>
+              <div>
+                <strong>HSK 1</strong>
+                <span>перший рівень</span>
+              </div>
+            </div>
+          </div>
+          <div class="hero-card" id="greeting">
+            <div class="card-label">Сьогодні вивчаємо</div>
+            <div class="hanzi" lang="zh-CN">你好</div>
+            <div class="pinyin">nǐ hǎo</div>
+            <div class="translation">Привіт</div>
+            <div class="mini-rule">
+              <div class="learning-item">
+                <b lang="zh-CN">你</b>
+                <span class="reading">nǐ</span>
+                <span>ти</span>
+              </div>
+              <div class="learning-item">
+                <b lang="zh-CN">好</b>
+                <span class="reading">hǎo</span>
+                <span>добре</span>
+              </div>
+            </div>
+            <button type="button" class="audio-demo" id="speakNihao" data-speak="greeting" hidden>▶ Прослухати</button>
+            <small class="hint">Для озвучення потрібен китайський голос у вашому браузері або системі.</small>
+          </div>
+        </div>
+      </section>
+      <section class="section" id="start">
+        <div class="container">
+          <div class="section-heading">
+            <span>01</span>
+            <div>
+              <h2>Китайська з нуля</h2>
+              <p>Пройдіть три кроки: звуки → слова → перша розмова.</p>
+            </div>
+          </div>
+          <div class="cards three">
+            <article class="lesson-card">
+              <div class="icon" aria-hidden="true">01</div>
+              <h3>Вимова</h3>
+              <p>Навчіться розрізняти китайські звуки, склади та чотири основні тони.</p>
+              <a href="#pinyin">Порівняти тони →</a>
+            </article>
+            <article class="lesson-card">
+              <div class="icon" aria-hidden="true">02</div>
+              <h3>Перші слова</h3>
+              <p>Прочитайте шість базових слів із піньїнем, перекладом і прикладами.</p>
+              <a href="#hsk">До словника →</a>
+            </article>
+            <article class="lesson-card">
+              <div class="icon" aria-hidden="true">03</div>
+              <h3>Жива мова</h3>
+              <p>Прочитайте короткий діалог і спробуйте представитися китайською.</p>
+              <a href="#dialogues">До діалогів →</a>
+            </article>
+          </div>
+        </div>
+      </section>
+      <section class="section soft" id="pinyin">
+        <div class="container">
+          <div class="section-heading">
+            <span>02</span>
+            <div>
+              <h2>Піньїнь і тони</h2>
+              <p>Pinyin — латинська система запису китайської вимови.</p>
+            </div>
+          </div>
+          <div class="tone-grid">
+            <article class="tone learning-item">
+              <b lang="zh-CN">妈</b>
+              <span class="reading">mā</span>
+              <span>мама</span>
+              <small>1-й тон · рівний високий</small>
+            </article>
+            <article class="tone learning-item">
+              <b lang="zh-CN">麻</b>
+              <span class="reading">má</span>
+              <span>коноплі</span>
+              <small>2-й тон · висхідний</small>
+            </article>
+            <article class="tone learning-item">
+              <b lang="zh-CN">马</b>
+              <span class="reading">mǎ</span>
+              <span>кінь</span>
+              <small>3-й тон · низький; в ізоляції — зі спадом і підйомом</small>
+            </article>
+            <article class="tone learning-item">
+              <b lang="zh-CN">骂</b>
+              <span class="reading">mà</span>
+              <span>сварити</span>
+              <small>4-й тон · різко спадний</small>
+            </article>
+          </div>
+          <div class="note">Тон змінює значення слова. Тут показано чотири основні тони; у мовленні також є нейтральний тон і зміни тонів у поєднаннях.</div>
+        </div>
+      </section>
+      <section class="section" id="hsk">
+        <div class="container">
+          <div class="section-heading">
+            <span>03</span>
+            <div>
+              <h2>HSK 1 — стартовий словник</h2>
+              <p>Почніть із найуживаніших слів і коротких речень.</p>
+            </div>
+          </div>
+          <div class="cards three vocabulary">
+            <article class="word-card">
+              <div class="learning-item">
+                <b lang="zh-CN">我</b>
+                <span class="reading">wǒ</span>
+                <span>я</span>
+              </div>
+              <p class="example-label">Приклад</p>
+              <div class="learning-item">
+                <b lang="zh-CN">我是学生。</b>
+                <span class="reading">Wǒ shì xuésheng.</span>
+                <span>Я студент.</span>
+              </div>
+            </article>
+            <article class="word-card">
+              <div class="learning-item">
+                <b lang="zh-CN">你</b>
+                <span class="reading">nǐ</span>
+                <span>ти</span>
+              </div>
+              <p class="example-label">Приклад</p>
+              <div class="learning-item">
+                <b lang="zh-CN">你好吗？</b>
+                <span class="reading">Nǐ hǎo ma?</span>
+                <span>Як ти?</span>
+              </div>
+            </article>
+            <article class="word-card">
+              <div class="learning-item">
+                <b lang="zh-CN">好</b>
+                <span class="reading">hǎo</span>
+                <span>добре</span>
+              </div>
+              <p class="example-label">Приклад</p>
+              <div class="learning-item">
+                <b lang="zh-CN">很好。</b>
+                <span class="reading">Hěn hǎo.</span>
+                <span>Дуже добре.</span>
+              </div>
+            </article>
+            <article class="word-card">
+              <div class="learning-item">
+                <b lang="zh-CN">是</b>
+                <span class="reading">shì</span>
+                <span>бути / є</span>
+              </div>
+              <p class="example-label">Приклад</p>
+              <div class="learning-item">
+                <b lang="zh-CN">他是老师。</b>
+                <span class="reading">Tā shì lǎoshī.</span>
+                <span>Він викладач.</span>
+              </div>
+            </article>
+            <article class="word-card">
+              <div class="learning-item">
+                <b lang="zh-CN">不</b>
+                <span class="reading">bù</span>
+                <span>не</span>
+              </div>
+              <p class="example-label">Приклад</p>
+              <div class="learning-item">
+                <b lang="zh-CN">我不是老师。</b>
+                <span class="reading">Wǒ bú shì lǎoshī.</span>
+                <span>Я не викладач.</span>
+              </div>
+            </article>
+            <article class="word-card">
+              <div class="learning-item">
+                <b lang="zh-CN">谢谢</b>
+                <span class="reading">xièxie</span>
+                <span>дякую</span>
+              </div>
+              <p class="example-label">Приклад</p>
+              <div class="learning-item">
+                <b lang="zh-CN">谢谢你。</b>
+                <span class="reading">Xièxie nǐ.</span>
+                <span>Дякую тобі.</span>
+              </div>
+            </article>
+          </div>
+          <p class="note">Це добірка з шести початкових слів, а не повний словник HSK 1. У прикладах трапляються додаткові слова. У фразі перед четвертим тоном «bù» вимовляється як «bú».</p>
+        </div>
+      </section>
+      <section class="section soft" id="words">
+        <div class="container">
+          <div class="section-heading">
+            <span>04</span>
+            <div>
+              <h2>Тематичні слова</h2>
+              <p>Вчіть слова блоками — так їх легше використовувати в реальному житті.</p>
+            </div>
+          </div>
+          <div class="cards four">
+            <article class="topic-card">
+              <h3>
+                <span aria-hidden="true">👋</span> Знайомство</h3>
+              <div class="learning-item">
+                <b lang="zh-CN">你好</b>
+                <span class="reading">nǐ hǎo</span>
+                <span>привіт</span>
+              </div>
+              <div class="learning-item">
+                <b lang="zh-CN">名字</b>
+                <span class="reading">míngzi</span>
+                <span>ім’я</span>
+              </div>
+              <div class="learning-item">
+                <b lang="zh-CN">中国</b>
+                <span class="reading">Zhōngguó</span>
+                <span>Китай</span>
+              </div>
+              <div class="learning-item">
+                <b lang="zh-CN">乌克兰</b>
+                <span class="reading">Wūkèlán</span>
+                <span>Україна</span>
+              </div>
+            </article>
+            <article class="topic-card">
+              <h3>
+                <span aria-hidden="true">🍜</span> Їжа</h3>
+              <div class="learning-item">
+                <b lang="zh-CN">米饭</b>
+                <span class="reading">mǐfàn</span>
+                <span>варений рис</span>
+              </div>
+              <div class="learning-item">
+                <b lang="zh-CN">水</b>
+                <span class="reading">shuǐ</span>
+                <span>вода</span>
+              </div>
+              <div class="learning-item">
+                <b lang="zh-CN">茶</b>
+                <span class="reading">chá</span>
+                <span>чай</span>
+              </div>
+              <div class="learning-item">
+                <b lang="zh-CN">鸡肉</b>
+                <span class="reading">jīròu</span>
+                <span>куряче м’ясо</span>
+              </div>
+            </article>
+            <article class="topic-card">
+              <h3>
+                <span aria-hidden="true">🚌</span> Транспорт</h3>
+              <div class="learning-item">
+                <b lang="zh-CN">车</b>
+                <span class="reading">chē</span>
+                <span>транспортний засіб / машина</span>
+              </div>
+              <div class="learning-item">
+                <b lang="zh-CN">地铁</b>
+                <span class="reading">dìtiě</span>
+                <span>метро</span>
+              </div>
+              <div class="learning-item">
+                <b lang="zh-CN">火车</b>
+                <span class="reading">huǒchē</span>
+                <span>поїзд</span>
+              </div>
+              <div class="learning-item">
+                <b lang="zh-CN">飞机</b>
+                <span class="reading">fēijī</span>
+                <span>літак</span>
+              </div>
+            </article>
+            <article class="topic-card">
+              <h3>
+                <span aria-hidden="true">💼</span> Робота</h3>
+              <div class="learning-item">
+                <b lang="zh-CN">公司</b>
+                <span class="reading">gōngsī</span>
+                <span>компанія</span>
+              </div>
+              <div class="learning-item">
+                <b lang="zh-CN">工作</b>
+                <span class="reading">gōngzuò</span>
+                <span>робота / працювати</span>
+              </div>
+              <div class="learning-item">
+                <b lang="zh-CN">同事</b>
+                <span class="reading">tóngshì</span>
+                <span>колега</span>
+              </div>
+              <div class="learning-item">
+                <b lang="zh-CN">经理</b>
+                <span class="reading">jīnglǐ</span>
+                <span>менеджер</span>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+      <section class="section" id="dialogues">
+        <div class="container">
+          <div class="section-heading">
+            <span>05</span>
+            <div>
+              <h2>Міні-діалог</h2>
+              <p>Знайомство китайською — простий шаблон для першої розмови.</p>
+            </div>
+          </div>
+          <div class="dialogue">
+            <div class="bubble left">
+              <small>A</small>
+              <b lang="zh-CN">你好！你叫什么名字？</b>
+              <span>Nǐ hǎo! Nǐ jiào shénme míngzi?</span>
+              <em>Привіт! Як тебе звати?</em>
+            </div>
+            <div class="bubble right">
+              <small>B</small>
+              <b lang="zh-CN">我叫安娜。你呢？</b>
+              <span>Wǒ jiào Ānnà. Nǐ ne?</span>
+              <em>Мене звати Анна. А тебе?</em>
+            </div>
+            <div class="bubble left">
+              <small>A</small>
+              <b lang="zh-CN">我叫马克。很高兴认识你！</b>
+              <span>Wǒ jiào Mǎkè. Hěn gāoxìng rènshi nǐ!</span>
+              <em>Мене звати Марк. Дуже приємно познайомитися!</em>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="section daily" id="daily">
+        <div class="container daily-card">
+          <div id="practicePhrase">
+            <div class="eyebrow">Фраза для практики</div>
+            <h2 lang="zh-CN">我想学中文。</h2>
+            <p class="big-pinyin">Wǒ xiǎng xué Zhōngwén.</p>
+            <p>Я хочу вивчати китайську мову.</p>
+          </div>
+          <div class="daily-actions">
+            <button type="button" class="button primary" id="speakDaily" data-speak="practicePhrase" hidden>▶ Прослухати</button>
+            <button type="button" class="button secondary" id="copyDaily" hidden>Копіювати</button>
+          </div>
+        </div>
+      </section>
+      <section class="section roadmap">
+        <div class="container">
+          <div class="section-heading">
+            <span aria-hidden="true">→</span>
+            <div>
+              <h2>Закріпіть вивчене</h2>
+              <p>Повторіть слова вголос, а потім прочитайте діалог зі своїм ім’ям.</p>
+            </div>
+          </div>
+          <div class="hero-actions">
+            <a class="button primary" href="#hsk">Повторити слова</a>
+            <a class="button secondary" href="#dialogues">Прочитати діалог</a>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer>
+      <div class="container footer-wrap">
+        <div>
+          <strong>Chinese UA</strong>
+          <p>Китайська мова для українців.</p>
+        </div>
+        <div class="footer-badge">中文 · Українська</div>
+      </div>
+    </footer>
+    <p id="actionStatus" class="action-status" role="status" aria-live="polite" aria-atomic="true"></p>
+    <noscript>
+      <p class="container note">Увімкніть JavaScript для озвучення та копіювання. Усі навчальні матеріали й навігація доступні без нього.</p>
+    </noscript>
+    <script src="script.js"></script>
+  </body>
 </html>

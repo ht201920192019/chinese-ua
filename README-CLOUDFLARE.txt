@@ -12,3 +12,9 @@ CHINESE-UA.PP.UA — CLOUDFLARE PAGES
 10. Wait until the custom domain status becomes Active.
 
 This is a fully static first version. No database or paid service is required.
+
+DEVELOPMENT AND VERIFICATION
+See README.md for local preview, browser checks, and speech limitations.
+Upload only index.html, styles.css, script.js, and favicon.svg together.
+Do not include .git, tests, or developer documentation in a manual upload.
+No framework, build step, backend, or runtime dependency is required.
