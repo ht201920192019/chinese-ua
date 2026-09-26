@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
 const { validateVocabularyImages, wordCard, renderVocabulary, flashcardWords, searchIndex } = require('../scripts/build-site.cjs');
-const { vocabulary } = require('../src/site-data.cjs');
+const { vocabulary, hskLessons } = require('../src/site-data.cjs');
 
 const root = path.resolve(__dirname, '..', 'public');
 const domain = 'https://chinese-ua.pp.ua';
@@ -43,6 +43,12 @@ assert.throws(() => validateVocabularyImages([{ slug: 'food', words: [{ hanzi: '
 assert.throws(() => validateVocabularyImages([{ slug: 'food', words: [{ hanzi: '苹果', image: '/images/vocabulary/food/..\\..\\outside.webp', imageAlt: 'Яблуко' }] }], root), /escapes public\/images\/vocabulary/);
 
 const foodGroup = vocabulary.find(group => group.slug === 'food');
+const lessonThree = hskLessons.find(lesson => lesson.slug === 'lesson-3');
+const lessonFour = hskLessons.find(lesson => lesson.slug === 'lesson-4');
+assert.match(lessonThree.exercise, /我___一个姐姐/);
+assert.match(lessonThree.answer, /我有一个姐姐。Wǒ yǒu yí ge jiějie\./);
+assert.ok(lessonFour.grammar.includes('几岁') && lessonFour.grammar.includes('вік дитини') && lessonFour.grammar.includes('你多大'));
+assert.equal(lessonFour.dialogue[0].hanzi, '你多大？', 'adult-age dialogue should use the more natural 你多大 question');
 const appleWord = foodGroup.words.find(item => item.hanzi === '苹果');
 const firstFoodImageBatch = [
   ['苹果', 'píngguǒ', 'яблуко'], ['水', 'shuǐ', 'вода'], ['茶', 'chá', 'чай'], ['米饭', 'mǐfàn', 'варений рис'],
