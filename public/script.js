@@ -16,8 +16,9 @@ function readLearningProgress() {
     return {
       lessons: Array.isArray(saved.lessons) ? saved.lessons.filter(item => item && typeof item.slug === 'string') : [],
       knownWords: Array.isArray(saved.knownWords) ? saved.knownWords : [],
+      quizResults: Array.isArray(saved.quizResults) ? saved.quizResults.filter(item => item && typeof item.slug === 'string') : [],
     };
-  } catch { return { lessons: [], knownWords: [] }; }
+  } catch { return { lessons: [], knownWords: [], quizResults: [] }; }
 }
 
 function saveLearningProgress(progress) {
@@ -80,6 +81,217 @@ if (completeLessonButton) completeLessonButton.addEventListener('click', () => {
   }
 });
 updateLearningProgress();
+
+function initializeQuiz(quizElement) {
+  let questions;
+  try { questions = JSON.parse(quizElement.dataset.quizData); }
+  catch { return; }
+  if (!Array.isArray(questions) || !questions.length) return;
+  const slug = quizElement.dataset.lessonSlug;
+  const cards = quizElement.querySelector('[data-quiz-questions]');
+  const progressLabel = quizElement.querySelector('[data-quiz-progress]');
+  const resultPanel = quizElement.querySelector('[data-quiz-result]');
+  const scoreLabel = quizElement.querySelector('[data-quiz-score]');
+  const resultFeedback = quizElement.querySelector('[data-quiz-feedback]');
+  const restartButton = quizElement.querySelector('[data-quiz-restart]');
+  const answers = questions.map(() => ({ value: null, checked: false, correct: false }));
+  const make = (tag, className, text) => {
+    const element = document.createElement(tag);
+    if (className) element.className = className;
+    if (text !== undefined) element.textContent = text;
+    return element;
+  };
+  const setProgress = () => {
+    const count = answers.filter(answer => answer.checked).length;
+    progressLabel.textContent = count === questions.length
+      ? 'Усі запитання перевірено.'
+      : `Відповіді: ${count} з ${questions.length}`;
+  };
+  const displayAnswer = question => {
+    if (question.type === 'single-choice') return question.options[question.correct];
+    if (question.type === 'true-false') return question.correct ? 'Так' : 'Ні';
+    if (question.type === 'fill-blank') return question.displayAnswer;
+    return question.correctOrder.join(' → ');
+  };
+  const saveResult = score => {
+    const progress = readLearningProgress();
+    const total = questions.length;
+    const result = { slug, score, total, percentage: Math.round(score / total * 100), completedAt: new Date().toISOString() };
+    progress.quizResults = [...progress.quizResults.filter(item => item.slug !== slug), result];
+    if (saveLearningProgress(progress)) announce(`Результат ${score} з ${total} збережено на цьому пристрої.`);
+  };
+  const showResult = () => {
+    if (!answers.every(answer => answer.checked)) {
+      resultPanel.hidden = true;
+      return;
+    }
+    const score = answers.filter(answer => answer.correct).length;
+    const percentage = Math.round(score / questions.length * 100);
+    scoreLabel.textContent = `${score} / ${questions.length} · ${percentage}%`;
+    resultFeedback.textContent = score === questions.length ? 'Відмінно!'
+      : score === questions.length - 1 ? 'Дуже добре!'
+        : score === 3 ? 'Добрий результат. Повторіть складні слова.'
+          : 'Рекомендуємо повторити матеріал уроку.';
+    resultPanel.hidden = false;
+    saveResult(score);
+  };
+
+  function renderQuestion(index) {
+    const question = questions[index];
+    const state = answers[index];
+    const card = make('article', 'quiz-question');
+    card.dataset.questionIndex = String(index);
+    card.append(make('h3', '', `Питання ${index + 1} з ${questions.length}`));
+    const prompt = question.type === 'true-false' ? question.statement : question.question;
+    const fieldset = make('fieldset', 'quiz-fieldset');
+    fieldset.append(make('legend', '', prompt));
+    const controls = make('div', 'quiz-controls');
+    let focusTarget;
+
+    if (question.type === 'single-choice' || question.type === 'true-false') {
+      const options = question.type === 'single-choice' ? question.options : ['Так', 'Ні'];
+      options.forEach((option, optionIndex) => {
+        const label = make('label', 'quiz-option');
+        const input = document.createElement('input');
+        input.type = 'radio';
+        input.name = `quiz-${slug}-${index}`;
+        input.value = String(optionIndex);
+        input.checked = state.value === optionIndex;
+        input.disabled = state.checked;
+        input.addEventListener('change', () => { state.value = optionIndex; });
+        label.append(input, make('span', '', option));
+        controls.append(label);
+        focusTarget ||= input;
+      });
+    } else if (question.type === 'fill-blank') {
+      const label = make('label', 'quiz-text-label', 'Ваша відповідь');
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'quiz-text-input';
+      input.autocomplete = 'off';
+      input.value = state.value || '';
+      input.disabled = state.checked;
+      input.addEventListener('input', () => { state.value = input.value; });
+      label.append(input);
+      controls.append(label);
+      focusTarget = input;
+    } else if (question.type === 'sentence-order') {
+      if (!Array.isArray(state.value)) state.value = [];
+      const selected = make('div', 'quiz-order-answer');
+      selected.setAttribute('aria-label', 'Складене речення');
+      selected.setAttribute('aria-live', 'polite');
+      const candidates = make('div', 'quiz-order-items');
+      candidates.setAttribute('aria-label', 'Доступні слова');
+      const orderActions = make('div', 'quiz-order-actions');
+      const renderOrder = () => {
+        selected.replaceChildren();
+        if (!state.value.length) selected.append(make('span', 'quiz-order-placeholder', 'Натискайте слова в потрібному порядку'));
+        state.value.forEach((itemIndex, position) => {
+          const token = make('button', 'quiz-token selected', question.items[itemIndex]);
+          token.type = 'button';
+          token.disabled = state.checked;
+          token.setAttribute('aria-label', `Прибрати слово ${question.items[itemIndex]} з позиції ${position + 1}`);
+          token.addEventListener('click', () => { state.value.splice(position, 1); renderOrder(); });
+          selected.append(token);
+        });
+        candidates.replaceChildren();
+        question.items.forEach((item, itemIndex) => {
+          if (state.value.includes(itemIndex)) return;
+          const token = make('button', 'quiz-token', item);
+          token.type = 'button';
+          token.disabled = state.checked;
+          token.addEventListener('click', () => { state.value.push(itemIndex); renderOrder(); });
+          candidates.append(token);
+          focusTarget ||= token;
+        });
+        undo.disabled = state.checked || !state.value.length;
+        clear.disabled = state.checked || !state.value.length;
+      };
+      const undo = make('button', 'button secondary quiz-small-button', 'Скасувати останнє');
+      undo.type = 'button';
+      undo.disabled = state.checked || !state.value.length;
+      undo.addEventListener('click', () => { state.value.pop(); renderOrder(); undo.disabled = !state.value.length; });
+      const clear = make('button', 'button secondary quiz-small-button', 'Очистити');
+      clear.type = 'button';
+      clear.disabled = state.checked || !state.value.length;
+      clear.addEventListener('click', () => { state.value = []; renderOrder(); undo.disabled = true; clear.disabled = true; });
+      orderActions.append(undo, clear);
+      controls.append(selected, candidates, orderActions);
+      renderOrder();
+    } else return;
+
+    fieldset.append(controls);
+    card.append(fieldset);
+    const feedback = make('p', 'quiz-feedback');
+    feedback.setAttribute('aria-live', 'polite');
+    feedback.setAttribute('aria-atomic', 'true');
+    if (state.checked) {
+      feedback.classList.add(state.correct ? 'is-correct' : 'is-incorrect');
+      feedback.textContent = state.correct
+        ? `Правильно. ${question.explanation}`
+        : `Неправильно. Правильна відповідь: ${displayAnswer(question)}. ${question.explanation}`;
+    }
+    card.append(feedback);
+    const actions = make('div', 'quiz-actions');
+    const check = make('button', 'button primary', 'Перевірити');
+    check.type = 'button';
+    check.hidden = state.checked;
+    check.addEventListener('click', () => {
+      let hasAnswer = false;
+      if (question.type === 'single-choice' || question.type === 'true-false') hasAnswer = Number.isInteger(state.value);
+      else if (question.type === 'fill-blank') hasAnswer = typeof state.value === 'string' && state.value.trim().length > 0;
+      else hasAnswer = Array.isArray(state.value) && state.value.length === question.items.length;
+      if (!hasAnswer) {
+        feedback.classList.remove('is-correct', 'is-incorrect');
+        feedback.textContent = 'Спочатку надайте відповідь.';
+        if (focusTarget) focusTarget.focus();
+        return;
+      }
+      if (question.type === 'single-choice') state.correct = state.value === question.correct;
+      else if (question.type === 'true-false') state.correct = (state.value === 0) === question.correct;
+      else if (question.type === 'fill-blank') {
+        const normalized = state.value.trim().replace(/[\s\u00a0]+/gu, '');
+        state.correct = question.answer.some(answer => normalized === answer.trim().replace(/[\s\u00a0]+/gu, ''));
+      } else {
+        const chosen = state.value.map(itemIndex => question.items[itemIndex]);
+        state.correct = chosen.length === question.correctOrder.length && chosen.every((item, i) => item === question.correctOrder[i]);
+      }
+      state.checked = true;
+      renderQuestion(index);
+      setProgress();
+      showResult();
+      quizElement.querySelector(`[data-question-index="${index}"] .quiz-retry`)?.focus({ preventScroll: true });
+    });
+    actions.append(check);
+    const retry = make('button', 'button secondary quiz-small-button quiz-retry', 'Спробувати ще раз');
+    retry.type = 'button';
+    retry.hidden = !state.checked;
+    retry.addEventListener('click', () => {
+      answers[index] = { value: question.type === 'sentence-order' ? [] : null, checked: false, correct: false };
+      renderQuestion(index);
+      setProgress();
+      resultPanel.hidden = true;
+      quizElement.querySelector(`[data-question-index="${index}"] input, [data-question-index="${index}"] .quiz-token`)?.focus({ preventScroll: true });
+    });
+    actions.append(retry);
+    card.append(actions);
+    const oldCard = cards.querySelector(`[data-question-index="${index}"]`);
+    if (oldCard) oldCard.replaceWith(card);
+    else cards.append(card);
+  }
+
+  questions.forEach((_, index) => renderQuestion(index));
+  setProgress();
+  restartButton.addEventListener('click', () => {
+    answers.forEach((_, index) => { answers[index] = { value: null, checked: false, correct: false }; });
+    questions.forEach((_, index) => renderQuestion(index));
+    setProgress();
+    resultPanel.hidden = true;
+    quizElement.querySelector('.quiz-question input, .quiz-question .quiz-token')?.focus({ preventScroll: true });
+  });
+}
+
+document.querySelectorAll('[data-quiz]').forEach(initializeQuiz);
 
 function announce(message) {
   if (!status) return;

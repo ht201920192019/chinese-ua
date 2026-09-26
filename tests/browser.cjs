@@ -58,6 +58,7 @@ const server = http.createServer((req, res) => {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
+    page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
 
     const assetPaths = ['/styles.css', '/script.js', '/favicon.svg', '/robots.txt', '/sitemap.xml'];
     for (const asset of assetPaths) assert.equal((await page.request.get(`${baseUrl}${asset}`)).status(), 200, `${asset} should load`);
@@ -97,6 +98,8 @@ const server = http.createServer((req, res) => {
         for (const section of ['words', 'grammar', 'dialogue', 'pronunciation', 'practice', 'summary']) {
           assert.equal(await page.locator(`#${section}`).count(), 1, `${route} is missing its ${section} lesson section`);
         }
+        assert.equal(await page.locator('[data-quiz] .quiz-question').count(), 5, `${route} should initialize five quiz questions`);
+        assert.ok(await page.locator('[data-quiz-progress]').textContent());
       }
 
       const links = await page.locator('a[href]').evaluateAll(elements => elements.map(anchor => ({ href: anchor.href, raw: anchor.getAttribute('href') })));
@@ -154,6 +157,85 @@ const server = http.createServer((req, res) => {
     await page.evaluate(() => localStorage.clear());
     await page.goto(baseUrl);
     assert.equal(await page.locator('[data-completed-total]').textContent(), '0', 'clearing browser data should reset progress');
+
+    await page.evaluate(() => localStorage.setItem('chineseUaLearningProgressV1', JSON.stringify({
+      lessons: [{ slug: 'lesson-1', completed: true, completedAt: '2026-01-01T00:00:00.000Z' }],
+      knownWords: ['你好'],
+    })));
+    await page.goto(`${baseUrl}/hsk/hsk1/lesson-1/`);
+    const quizCards = page.locator('[data-quiz] .quiz-question');
+    assert.equal(await quizCards.count(), 5, 'quiz should initialize all five questions');
+
+    // Keyboard-select the right first answer and check it.
+    await quizCards.nth(0).locator('input[type="radio"]').nth(0).focus();
+    await page.keyboard.press('Space');
+    await quizCards.nth(0).getByRole('button', { name: 'Перевірити' }).click();
+    assert.match(await quizCards.nth(0).locator('.quiz-feedback').textContent(), /^Правильно\./);
+
+    // Wrong choice is reported immediately and can be retried.
+    await quizCards.nth(1).locator('input[type="radio"]').nth(1).check();
+    await quizCards.nth(1).getByRole('button', { name: 'Перевірити' }).click();
+    assert.match(await quizCards.nth(1).locator('.quiz-feedback').textContent(), /^Неправильно\./);
+    await quizCards.nth(1).getByRole('button', { name: 'Спробувати ще раз' }).click();
+    await quizCards.nth(1).locator('input[type="radio"]').nth(1).check();
+    await quizCards.nth(1).getByRole('button', { name: 'Перевірити' }).click();
+    assert.match(await quizCards.nth(1).locator('.quiz-feedback').textContent(), /^Неправильно\./);
+
+    await quizCards.nth(2).locator('input[type="radio"]').nth(0).check();
+    await quizCards.nth(2).getByRole('button', { name: 'Перевірити' }).click();
+    assert.match(await quizCards.nth(2).locator('.quiz-feedback').textContent(), /^Правильно\./, 'true/false question should be evaluated');
+    await quizCards.nth(3).locator('input[type="text"]').fill(' 叫 ');
+    await quizCards.nth(3).getByRole('button', { name: 'Перевірити' }).click();
+    assert.match(await quizCards.nth(3).locator('.quiz-feedback').textContent(), /^Правильно\./, 'fill blank should trim surrounding spaces');
+
+    const orderCard = quizCards.nth(4);
+    const orderChoices = orderCard.locator('.quiz-order-items');
+    await orderChoices.getByRole('button', { name: '安娜' }).click();
+    await orderCard.getByRole('button', { name: 'Скасувати останнє' }).click();
+    const keyboardToken = orderChoices.getByRole('button', { name: '我' });
+    await keyboardToken.focus();
+    await page.keyboard.press('Enter');
+    for (const token of ['叫', '安娜']) await orderChoices.getByRole('button', { name: token }).click();
+    await orderCard.getByRole('button', { name: 'Перевірити' }).click();
+    assert.match(await orderCard.locator('.quiz-feedback').textContent(), /^Правильно\./, 'sentence order should be evaluated');
+    assert.equal(await page.locator('[data-quiz-result]').isVisible(), true);
+    assert.equal(await page.locator('[data-quiz-score]').textContent(), '4 / 5 · 80%');
+    let quizStorage = await page.evaluate(() => JSON.parse(localStorage.getItem('chineseUaLearningProgressV1')));
+    assert.deepEqual(quizStorage.lessons[0].slug, 'lesson-1', 'quiz save must preserve lesson completion');
+    assert.deepEqual(quizStorage.knownWords, ['你好'], 'quiz save must preserve existing fields');
+    assert.deepEqual(quizStorage.quizResults[0], {
+      slug: 'lesson-1', score: 4, total: 5, percentage: 80, completedAt: quizStorage.quizResults[0].completedAt,
+    });
+    assert.ok(Number.isFinite(Date.parse(quizStorage.quizResults[0].completedAt)));
+
+    await page.locator('[data-quiz-restart]').click();
+    assert.equal(await page.locator('[data-quiz-result]').isVisible(), false, 'restart should reset the quiz component');
+    await page.reload();
+    quizStorage = await page.evaluate(() => JSON.parse(localStorage.getItem('chineseUaLearningProgressV1')));
+    assert.equal(quizStorage.quizResults[0].score, 4, 'quiz result should remain after reload');
+    const retakeCards = page.locator('[data-quiz] .quiz-question');
+    await retakeCards.nth(0).locator('input[type="radio"]').nth(0).check();
+    await retakeCards.nth(0).getByRole('button', { name: 'Перевірити' }).click();
+    await retakeCards.nth(1).locator('input[type="radio"]').nth(0).check();
+    await retakeCards.nth(1).getByRole('button', { name: 'Перевірити' }).click();
+    await retakeCards.nth(2).locator('input[type="radio"]').nth(0).check();
+    await retakeCards.nth(2).getByRole('button', { name: 'Перевірити' }).click();
+    await retakeCards.nth(3).locator('input[type="text"]').fill('叫');
+    await retakeCards.nth(3).getByRole('button', { name: 'Перевірити' }).click();
+    for (const token of ['我', '叫', '安娜']) await retakeCards.nth(4).locator('.quiz-order-items').getByRole('button', { name: token }).click();
+    await retakeCards.nth(4).getByRole('button', { name: 'Перевірити' }).click();
+    quizStorage = await page.evaluate(() => JSON.parse(localStorage.getItem('chineseUaLearningProgressV1')));
+    assert.equal(quizStorage.quizResults.length, 1, 'retake should update the latest lesson score, not append duplicates');
+    assert.equal(quizStorage.quizResults[0].score, 5);
+    assert.equal(quizStorage.lessons[0].completed, true, 'quiz and lesson completion must stay independent');
+
+    await page.goto(`${baseUrl}/hsk/hsk1/lesson-4/`);
+    const falseQuestion = page.locator('[data-quiz] .quiz-question').nth(2);
+    await falseQuestion.locator('input[type="radio"]').nth(1).check();
+    await falseQuestion.getByRole('button', { name: 'Перевірити' }).click();
+    assert.match(await falseQuestion.locator('.quiz-feedback').textContent(), /^Правильно\./, 'false true/false answer should work');
+    await page.setViewportSize({ width: 320, height: 812 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'quiz should not overflow on a 320px mobile viewport');
 
     await page.goto(baseUrl);
     await page.locator('#menuButton').click();
