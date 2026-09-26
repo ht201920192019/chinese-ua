@@ -208,7 +208,7 @@ const hubs = [
 const vocabularyImages = require('./vocabulary-images.json');
 for (const group of vocabulary) {
   for (const item of group.words) {
-    const asset = vocabularyImages[item.hanzi];
+    const asset = vocabularyImages[`${group.slug}:${item.hanzi}`] || vocabularyImages[item.hanzi];
     if (asset && !item.image) Object.assign(item, asset);
   }
 }

@@ -164,8 +164,8 @@ function renderNotFound() {
   return shell(page, '404.html', body);
 }
 
-function renderFlashcards(page, route) {
-  const words = vocabulary.flatMap(group => group.words.map(item => ({
+function flashcardWords() {
+  return vocabulary.flatMap(group => group.words.map(item => ({
     id: `${group.slug}:${item.hanzi}`,
     topic: group.slug,
     topicTitle: group.title,
@@ -178,13 +178,16 @@ function renderFlashcards(page, route) {
     examplePinyin: item.examplePinyin || '',
     exampleUk: item.exampleUk || '',
   })));
+}
+
+function renderFlashcards(page, route) {
   const topicLabels = { greetings: 'Привітання', numbers: 'Числа', family: 'Сім’я', food: 'Їжа', transport: 'Транспорт', work: 'Робота' };
   const topicOptions = [['all', 'Усі слова'], ...vocabulary.map(group => [group.slug, topicLabels[group.slug] || group.title])];
-  const markup = `<div class="container article-layout flashcards-page" data-flashcard-app data-words="${esc(JSON.stringify(words))}">${pageIntro(page, route, 'Інструмент для повторення')}<div class="flashcard-toolbar">
+  const markup = `<div class="container article-layout flashcards-page" data-flashcard-app data-vocabulary-src="/data/vocabulary.json">${pageIntro(page, route, 'Інструмент для повторення')}<div class="flashcard-toolbar">
     <label>Тема<select data-topic-filter aria-label="Оберіть тему">${topicOptions.map(([value, label]) => `<option value="${esc(value)}">${esc(label)}</option>`).join('')}</select></label>
     <label>Режим<select data-review-mode aria-label="Оберіть режим повторення"><option value="all">Усі слова</option><option value="unknown">Ще не знаю</option><option value="known">Вивчені</option></select></label>
     <button class="button secondary" type="button" data-shuffle>Перемішати</button>
-  </div><div class="flashcard-progress" data-flashcard-progress aria-live="polite">Картки завантажуються…</div>
+  </div><div class="flashcard-progress" data-flashcard-progress aria-live="polite">Картки завантажуються…</div><p class="flashcard-load-error" data-flashcard-load-error role="status" hidden>Не вдалося завантажити слова. Оновіть сторінку або перегляньте <a href="/vocabulary/">тематичний словник</a>.</p>
   <section class="flashcard-stage" data-flashcard-stage aria-label="Картка зі словом"><div class="flashcard-shell" data-flashcard-shell></div><nav class="flashcard-navigation" aria-label="Навігація картками"><button class="button secondary" type="button" data-previous>← Назад</button><button class="button secondary" type="button" data-next>Далі →</button></nav></section>
   <section class="flashcard-empty" data-flashcard-empty hidden aria-live="polite"><p data-empty-message></p><button class="button primary" type="button" data-start-review>Почати повторення</button></section>
   <p class="flashcard-shortcuts" tabindex="0">Клавіатура: пробіл або Enter — показати відповідь; ← / → — попередня чи наступна картка.</p>
@@ -319,6 +322,8 @@ function build() {
     fs.mkdirSync(path.dirname(destination), { recursive: true });
     fs.writeFileSync(destination, page.render(), 'utf8');
   }
+  fs.mkdirSync(path.join(output, 'data'), { recursive: true });
+  fs.writeFileSync(path.join(output, 'data', 'vocabulary.json'), `${JSON.stringify(flashcardWords(), null, 2)}\n`, 'utf8');
   fs.writeFileSync(path.join(output, '404.html'), renderNotFound(), 'utf8');
   for (const legacyPage of ['pinyin-tones.html', 'first-phrases.html', 'numbers-prices.html']) {
     const legacyFile = path.join(output, legacyPage);
@@ -335,5 +340,5 @@ function build() {
   console.log(`Generated ${pages.length} HTML pages in public/.`);
 }
 
-module.exports = { build, validateVocabularyImages, wordCard, renderVocabulary };
+module.exports = { build, validateVocabularyImages, wordCard, renderVocabulary, flashcardWords };
 if (require.main === module) build();

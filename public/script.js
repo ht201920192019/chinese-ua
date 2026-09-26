@@ -410,15 +410,25 @@ function bindSpeechButton(button) {
   button.addEventListener('click', () => speakChinese(button));
 }
 
-function initializeFlashcards(app) {
+async function initializeFlashcards(app) {
+  const progressLabel = app.querySelector('[data-flashcard-progress]');
+  const stage = app.querySelector('[data-flashcard-stage]');
+  const loadError = app.querySelector('[data-flashcard-load-error]');
   let words;
-  try { words = JSON.parse(app.dataset.words || '[]'); } catch { words = []; }
-  if (!Array.isArray(words) || !words.length) return;
+  try {
+    const response = await fetch(app.dataset.vocabularySrc);
+    if (!response.ok) throw new Error(`Vocabulary request failed: ${response.status}`);
+    words = await response.json();
+    if (!Array.isArray(words) || !words.length) throw new Error('Vocabulary data is empty or invalid');
+  } catch (error) {
+    if (progressLabel) progressLabel.hidden = true;
+    if (stage) stage.hidden = true;
+    if (loadError) loadError.hidden = false;
+    return;
+  }
   const topicFilter = app.querySelector('[data-topic-filter]');
   const modeFilter = app.querySelector('[data-review-mode]');
   const shuffleButton = app.querySelector('[data-shuffle]');
-  const progressLabel = app.querySelector('[data-flashcard-progress]');
-  const stage = app.querySelector('[data-flashcard-stage]');
   const cardShell = app.querySelector('[data-flashcard-shell]');
   const emptyPanel = app.querySelector('[data-flashcard-empty]');
   const emptyMessage = app.querySelector('[data-empty-message]');

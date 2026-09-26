@@ -3,7 +3,8 @@
   "private": true,
   "scripts": {
     "build": "node scripts/build-site.cjs",
-    "test": "node tests/browser.cjs"
+    "test": "node tests/browser.cjs",
+    "check-build": "npm run build && node scripts/check-build.cjs"
   },
   "devDependencies": {
     "playwright": "^1.63.0"
