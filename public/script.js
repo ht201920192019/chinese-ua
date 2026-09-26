@@ -441,10 +441,11 @@ function initializeFlashcards(app) {
     if (!word) return;
     const known = knownSet().has(word.id);
     const speechTargetId = `flashcard-${word.topic}-${[...word.hanzi].map(character => character.codePointAt(0).toString(16)).join('-')}`;
+    const image = word.image ? `<span class="flashcard-image-frame"><img src="${escape(word.image)}" alt="${escape(word.imageAlt || '')}" loading="lazy" decoding="async" data-vocabulary-image></span>` : '';
     const example = word.example ? `<div class="flashcard-example"><b lang="zh-CN">${escape(word.example)}</b><span lang="zh-Latn">${escape(word.examplePinyin)}</span><span>${escape(word.exampleUk)}</span></div>` : '';
     cardShell.innerHTML = `<article class="flashcard-card" id="${escape(speechTargetId)}">
       <button type="button" class="flashcard-face" data-flashcard-front aria-expanded="false" aria-controls="flashcardBack">
-        <span class="flashcard-topic">${escape(topicNames[word.topic] || word.topicTitle)}</span><b lang="zh-CN">${escape(word.hanzi)}</b><span class="flashcard-reveal">Показати відповідь</span>
+        <span class="flashcard-topic">${escape(topicNames[word.topic] || word.topicTitle)}</span>${image}<b lang="zh-CN">${escape(word.hanzi)}</b><span class="flashcard-reveal">Показати відповідь</span>
       </button>
       <div class="flashcard-back" id="flashcardBack" data-flashcard-back hidden>
         <div class="flashcard-answer"><b lang="zh-CN">${escape(word.hanzi)}</b><span class="flashcard-pinyin" lang="zh-Latn">${escape(word.pinyin)}</span><span class="flashcard-meaning">${escape(word.uk)}</span><button class="audio-button flashcard-audio" type="button" data-speak="${escape(speechTargetId)}" hidden>▶ Прослухати</button>${example}</div>
@@ -453,6 +454,8 @@ function initializeFlashcards(app) {
       </div>
     </article>`;
     const front = cardShell.querySelector('[data-flashcard-front]');
+    const vocabularyImage = cardShell.querySelector('[data-vocabulary-image]');
+    if (vocabularyImage) vocabularyImage.addEventListener('error', () => vocabularyImage.closest('.flashcard-image-frame')?.remove(), { once: true });
     front.addEventListener('click', () => { showFace(true); cardShell.querySelector('[data-flip-back]').focus({ preventScroll: true }); });
     cardShell.querySelector('[data-flip-back]').addEventListener('click', () => { showFace(false); front.focus({ preventScroll: true }); });
     cardShell.querySelector('[data-flashcard-back]').addEventListener('click', event => {

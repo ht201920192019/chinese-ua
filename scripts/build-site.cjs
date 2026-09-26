@@ -133,6 +133,8 @@ function renderFlashcards(page, route) {
     hanzi: item.hanzi,
     pinyin: item.pinyin,
     uk: item.uk,
+    image: item.image || '',
+    imageAlt: item.imageAlt || '',
     example: item.example || '',
     examplePinyin: item.examplePinyin || '',
     exampleUk: item.exampleUk || '',

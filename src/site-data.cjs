@@ -1,5 +1,6 @@
-const word = (hanzi, pinyin, uk, example, examplePinyin, exampleUk) => ({
+const word = (hanzi, pinyin, uk, example, examplePinyin, exampleUk, image, imageAlt) => ({
   hanzi, pinyin, uk, example, examplePinyin, exampleUk,
+  ...(image ? { image, imageAlt: imageAlt || '' } : {}),
 });
 
 const vocabulary = [

@@ -21,6 +21,19 @@ const htmlByRoute = new Map(routes.map((route, index) => [route, fs.readFileSync
 const idsByRoute = new Map([...htmlByRoute].map(([route, html]) => [route, new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]))]));
 const redirects = fs.readFileSync(path.join(root, '_redirects'), 'utf8').trim().split(/\r?\n/).map(line => line.trim().split(/\s+/)).filter(parts => parts.length >= 3);
 
+function flashcardHtmlWithImage(image, imageAlt) {
+  const html = htmlByRoute.get('/tools/flashcards/');
+  const encodedWords = html.match(/data-words="([^"]+)"/)?.[1];
+  assert.ok(encodedWords, 'flashcard page should include its generated vocabulary data');
+  const words = JSON.parse(encodedWords.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>'));
+  const apple = words.find(word => word.id === 'food:苹果');
+  assert.ok(apple, 'sample apple vocabulary should be present');
+  apple.image = image;
+  apple.imageAlt = imageAlt;
+  const encoded = JSON.stringify(words).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  return html.replace(/data-words="[^"]+"/, `data-words="${encoded}"`);
+}
+
 function staticFile(pathname) {
   const decoded = decodeURIComponent(pathname);
   const clean = path.posix.normalize(decoded).replace(/^\/+/, '');
@@ -103,6 +116,9 @@ const server = http.createServer((req, res) => {
           const ids = JSON.parse(element.dataset.words).map(word => word.id);
           return ids.length === 53 && new Set(ids).size === ids.length;
         }), true, 'all 53 vocabulary records should have unique stable card IDs');
+        for (const topic of ['food', 'family', 'transport', 'work', 'greetings', 'numbers']) {
+          assert.equal(fs.existsSync(path.join(root, 'images', 'vocabulary', topic, '.gitkeep')), true, `image folder scaffold missing for ${topic}`);
+        }
         assert.equal(await page.locator('[data-topic-filter] option').count(), 7);
         assert.equal(await page.locator('footer a[href="/tools/flashcards/"]').count(), 1, 'footer should link to the flashcards page');
       }
@@ -262,6 +278,7 @@ const server = http.createServer((req, res) => {
     assert.equal(await flashcard.count(), 1, 'flashcards page should initialize');
     assert.equal(await page.locator('[data-flashcard-progress]').textContent(), 'Картка 1 з 53 · Вивчено: 0 / 53');
     assert.equal(await face.locator('[lang="zh-CN"]').textContent(), '你好');
+    assert.equal(await face.locator('img').count(), 0, 'words without image data should keep the text-only card');
     assert.equal(await page.locator('[data-flashcard-back]').isVisible(), false, 'answer should be hidden on the front');
     assert.equal(await page.locator('[data-flashcard-back]').getByText('привіт').count(), 2, 'answer and example translation should be in the hidden back face');
     await face.click();
@@ -342,6 +359,92 @@ const server = http.createServer((req, res) => {
       await page.goto(`${baseUrl}/tools/flashcards/`);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `flashcards should not overflow at ${width}px`);
     }
+
+    const imagePage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    const imagePageErrors = [];
+    imagePage.on('pageerror', error => imagePageErrors.push(error.message));
+    await imagePage.addInitScript(() => {
+      window.spoken = [];
+      window.testVoices = [{ lang: 'zh-CN', name: 'Test Mandarin' }];
+      Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: {
+        getVoices: () => window.testVoices,
+        cancel: () => {},
+        speak: utterance => { window.spoken.push(utterance.text); utterance.onstart?.(); },
+      } });
+      window.SpeechSynthesisUtterance = class { constructor(text) { this.text = text; } };
+    });
+    await imagePage.route(`${baseUrl}/tools/flashcards/`, route => route.fulfill({
+      status: 200,
+      contentType: 'text/html; charset=utf-8',
+      body: flashcardHtmlWithImage('/images/vocabulary/food/apple-test.svg', 'Червоне яблуко'),
+    }));
+    await imagePage.route('**/images/vocabulary/food/apple-test.svg', route => route.fulfill({
+      status: 200,
+      contentType: 'image/svg+xml',
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="34" r="20" fill="#dc2626"/></svg>',
+    }));
+    await imagePage.goto(`${baseUrl}/tools/flashcards/`);
+    await imagePage.locator('[data-topic-filter]').selectOption('food');
+    await imagePage.locator('[data-next]').click();
+    await imagePage.locator('[data-next]').click();
+    await imagePage.locator('[data-next]').click();
+    assert.equal(await imagePage.locator('[data-flashcard-front] [lang="zh-CN"]').textContent(), '苹果');
+    const sampleImage = imagePage.locator('[data-vocabulary-image]');
+    await sampleImage.scrollIntoViewIfNeeded();
+    await imagePage.waitForFunction(() => {
+      const image = document.querySelector('[data-vocabulary-image]');
+      return Boolean(image?.complete && image.naturalWidth > 0);
+    });
+    assert.equal(await sampleImage.getAttribute('alt'), 'Червоне яблуко');
+    assert.equal(await sampleImage.getAttribute('loading'), 'lazy');
+    assert.equal(await sampleImage.getAttribute('decoding'), 'async');
+    assert.equal(await imagePage.locator('[data-flashcard-front]').getByText('píngguǒ').count(), 0, 'front should not disclose pinyin');
+    await imagePage.locator('[data-flashcard-front]').click();
+    assert.equal(await imagePage.locator('[data-flashcard-back] [lang="zh-Latn"]').first().textContent(), 'píngguǒ');
+    await imagePage.locator('[data-flashcard-back] [data-speak]').click();
+    assert.equal(await imagePage.evaluate(() => window.spoken.at(-1)), '苹果', 'speech should continue working with an image card');
+    await imagePage.setViewportSize({ width: 320, height: 812 });
+    assert.ok(await imagePage.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'image card should not overflow on mobile');
+
+    const fallbackPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    const fallbackErrors = [];
+    fallbackPage.on('pageerror', error => fallbackErrors.push(error.message));
+    await fallbackPage.addInitScript(() => {
+      window.spoken = [];
+      window.testVoices = [{ lang: 'zh-CN', name: 'Test Mandarin' }];
+      Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: {
+        getVoices: () => window.testVoices,
+        cancel: () => {},
+        speak: utterance => { window.spoken.push(utterance.text); utterance.onstart?.(); },
+      } });
+      window.SpeechSynthesisUtterance = class { constructor(text) { this.text = text; } };
+      localStorage.setItem('chineseUaLearningProgressV1', JSON.stringify({ lessons: [{ slug: 'lesson-1', completed: true }], knownWords: [], quizResults: [{ slug: 'lesson-1', score: 4, total: 5, percentage: 80, completedAt: '2026-03-01T00:00:00Z' }] }));
+    });
+    await fallbackPage.route(`${baseUrl}/tools/flashcards/`, route => route.fulfill({
+      status: 200,
+      contentType: 'text/html; charset=utf-8',
+      body: flashcardHtmlWithImage('/images/vocabulary/food/apple-missing.webp', 'Червоне яблуко'),
+    }));
+    await fallbackPage.route('**/images/vocabulary/food/apple-missing.webp', route => route.fulfill({ status: 404, contentType: 'image/webp', body: 'missing image' }));
+    await fallbackPage.goto(`${baseUrl}/tools/flashcards/`);
+    await fallbackPage.locator('[data-topic-filter]').selectOption('food');
+    await fallbackPage.locator('[data-next]').click();
+    await fallbackPage.locator('[data-next]').click();
+    await fallbackPage.locator('[data-next]').click();
+    await fallbackPage.locator('[data-vocabulary-image]').waitFor({ state: 'detached' });
+    assert.equal(await fallbackPage.locator('[data-flashcard-front] [lang="zh-CN"]').textContent(), '苹果', 'missing image should fall back to text');
+    assert.equal(await fallbackPage.locator('[data-vocabulary-image]').count(), 0, 'failed image should not leave a broken-image icon');
+    await fallbackPage.locator('[data-flashcard-front]').click();
+    assert.equal(await fallbackPage.locator('[data-flashcard-back] [lang="zh-Latn"]').first().textContent(), 'píngguǒ', 'flip should keep working after image failure');
+    await fallbackPage.locator('[data-flashcard-back] [data-speak]').click();
+    assert.equal(await fallbackPage.evaluate(() => window.spoken.at(-1)), '苹果', 'audio should keep working after image failure');
+    await fallbackPage.locator('[data-mark-word="known"]').click();
+    const fallbackProgress = await fallbackPage.evaluate(() => JSON.parse(localStorage.getItem('chineseUaLearningProgressV1')));
+    assert.deepEqual(fallbackProgress.knownWords, ['food:苹果']);
+    assert.equal(fallbackProgress.lessons[0].slug, 'lesson-1');
+    assert.equal(fallbackProgress.quizResults[0].score, 4);
+    assert.deepEqual(imagePageErrors, [], 'image rendering should not cause JavaScript errors');
+    assert.deepEqual(fallbackErrors, [], 'image failure should not cause JavaScript errors');
 
     await page.goto(baseUrl);
     await page.locator('#menuButton').click();
