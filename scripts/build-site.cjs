@@ -1,6 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { vocabulary, grammar, dialogues, hskLessons, pinyinPages, hubs, characters } = require('../src/site-data.cjs');
+const { site, vocabulary, grammar, dialogues, hskLessons, pinyinPages, hubs, characters } = require('../src/site-data.cjs');
 
 const root = path.resolve(__dirname, '..');
 const output = path.join(root, 'public');
@@ -37,7 +37,7 @@ function footer() {
   return `<footer class="site-footer"><div class="container footer-grid">
     <div class="footer-brand"><a href="/" class="footer-logo">Chinese UA</a><p>Китайська мова для українців.</p><span>中文 · Українська</span></div>
     <div><h2>Навчання</h2><a href="/hsk/">HSK</a><a href="/pinyin/">Pinyin</a><a href="/grammar/">Граматика</a><a href="/vocabulary/">Слова</a></div>
-    <div><h2>Практика</h2><a href="/dialogues/">Діалоги</a><a href="/tools/#hsk-test">Тести</a><a href="/tools/flashcards/">Картки</a></div>
+    <div><h2>Практика</h2><a href="/dialogues/">Діалоги</a><a href="/hsk/hsk1/">Уроки HSK 1</a><a href="/tools/flashcards/">Картки</a></div>
     <div><h2>Chinese UA</h2><a href="/about/">Про проєкт</a><a href="/contact/">Контакт</a><a href="/privacy/">Конфіденційність</a><a href="/terms/">Умови</a></div>
   </div><div class="container footer-bottom"><span>Навчальні матеріали українською</span><span>© Chinese UA</span></div></footer>
   <p id="actionStatus" class="action-status" role="status" aria-live="polite" aria-atomic="true"></p>`;
@@ -59,6 +59,7 @@ function head(page, route) {
   const canonical = urlFor(route);
   const description = page.description || `${page.title} — урок китайської мови українською з Pinyin, прикладами та практикою. Chinese UA.`;
   const title = page.metaTitle || `${page.title} | Chinese UA`;
+  const robotsMeta = page.robots ? `<meta name="robots" content="${esc(page.robots)}" />` : page.noindex ? '<meta name="robots" content="noindex,follow" />' : '';
   const crumbItems = route === '/' ? [] : [['Головна', '/'], ...route.split('/').filter(Boolean).map((part, index, parts) => {
     const current = `${parts.slice(0, index + 1).join('/')}/`;
     return [pageByRoute.get(current)?.title || part, current];
@@ -70,7 +71,7 @@ function head(page, route) {
   <meta name="description" content="${esc(description)}" />
   <meta name="theme-color" content="#0f172a" />
   <title>${esc(title)}</title>
-  <link rel="canonical" href="${canonical}" />
+  ${robotsMeta ? `${robotsMeta}\n  ` : ''}<link rel="canonical" href="${canonical}" />
   <meta property="og:type" content="${route === '/' ? 'website' : 'article'}" />
   <meta property="og:locale" content="uk_UA" />
   <meta property="og:site_name" content="Chinese UA" />
@@ -137,15 +138,30 @@ function validateVocabularyImages(groups = vocabulary, publicDir = output) {
 }
 
 function renderHub(page, route) {
-  const sections = renderSections((page.sections || []).map(([title, text]) => ({ title, text })));
+  const pageDetails = pageByRoute.get(route) || page;
+  const privacySections = [
+    { title: 'Облікові записи та навчальний прогрес', text: 'Chinese UA наразі не має реєстрації користувачів або серверних облікових записів. Навчальний прогрес зберігається лише в localStorage браузера на вашому пристрої під ключем chineseUaLearningProgressV1. Він містить завершені уроки, позначені як вивчені слова та результати Quiz. Ці дані не надсилаються автоматично на сервер Chinese UA. Якщо очистити дані браузера, змінити браузер або пристрій, прогрес може бути втрачено. Синхронізації між пристроями зараз немає.' },
+    { title: 'Озвучення', text: 'Китайське мовлення використовує Speech Synthesis браузера або операційної системи. Доступність голосів залежить від пристрою та його налаштувань.' },
+    { title: 'Хостинг і технічні дані', text: 'Сайт розміщено на Cloudflare. Як постачальник інфраструктури, Cloudflare може обробляти необхідні технічні дані запитів і журнали мережевого доступу відповідно до власних умов та політик.' },
+    { title: 'Майбутні зміни', text: 'Якщо на сайті з’являться аналітика, реєстрація, серверні облікові записи або форми, цю політику буде оновлено до запуску таких функцій.' },
+  ];
+  const sourceSections = route === 'privacy/' ? privacySections : route === 'contact/' ? [] : (page.sections || []).map(([title, text]) => ({ title, text }));
+  const sections = renderSections(sourceSections);
   const content = page.cards ? cards(page.cards) : '';
   const links = page.links ? `<nav class="related-links" aria-label="Пов’язані навчальні сторінки">${page.links.map(target => `<a class="button secondary" href="/${target}">${esc(pageByRoute.get(target)?.title || target)} →</a>`).join('')}</nav>` : '';
-  const special = route === 'tools/' ? `<div id="hsk-test" class="tool-slot"><h2>Тест HSK</h2><p>Інтерактивні завдання для самоперевірки за курсом з’являться в наступному етапі.</p></div><div id="flashcards" class="tool-slot"><h2>Картки для повторення</h2><p>Повторюйте слова за темами й позначайте ті, які вже знаєте.</p><a class="button primary" href="/tools/flashcards/">Відкрити картки →</a></div>`
+  const contactContent = route === 'contact/' ? `<section class="article-section contact-feedback"><h2>Як зв’язатися</h2>${site.contactEmail ? `<p>Напишіть на <a href="mailto:${esc(site.contactEmail)}">${esc(site.contactEmail)}</a>.</p>` : '<p class="notice-card">Публічну адресу для зв’язку ще не опубліковано.</p>'}<h2>Повідомити про помилку</h2><p>Щоб ми могли перевірити зауваження, зазначте:</p><ul><li>URL сторінки;</li><li>початкове китайське речення;</li><li>Pinyin;</li><li>українське пояснення;</li><li>запропоноване виправлення.</li></ul></section>` : '';
+  const special = route === 'tools/' ? `<section class="tool-slot" aria-labelledby="availableTools"><h2 id="availableTools">Доступно</h2><article class="hub-card"><h3>Картки для повторення</h3><p>Повторюйте слова за темами, відкривайте відповіді та позначайте вивчені слова.</p><a class="button primary" href="/tools/flashcards/">Відкрити Flashcards →</a></article></section><section class="tool-slot planned-tools" id="planned-tools" aria-labelledby="plannedTools"><h2 id="plannedTools">Незабаром</h2><ul><li>Конвертер Pinyin</li><li>Тренажер тонів</li><li>Окремий тест HSK</li></ul><p>Ці інструменти ще не доступні.</p></section>`
     : route === 'hsk/hsk1/' ? `<section class="course-progress" data-course-progress aria-labelledby="courseProgressTitle"><h2 id="courseProgressTitle">Прогрес курсу</h2><p><span data-progress-count>0 / ${hskLessons.length} уроків завершено</span></p><div class="progress-track" role="progressbar" aria-label="Прогрес курсу HSK 1" aria-valuemin="0" aria-valuemax="${hskLessons.length}" aria-valuenow="0"><span class="progress-fill" data-progress-fill></span></div></section>`
     : route === 'characters/' ? `<section id="basic-characters" class="article-section"><h2>50 базових ієрогліфів</h2><div class="cards three vocabulary-grid">${characters.map((item, index) => wordCard(item, `character-${index + 1}`, false)).join('')}</div></section>`
     : route === 'hsk/' ? `<section class="article-section"><h2>Навчальний шлях за рівнями</h2><div class="cards three level-grid"><a class="hub-card" id="level-hsk1" href="/hsk/hsk1/"><span class="hub-card-icon">01</span><h2>HSK 1</h2><p>П’ять початкових уроків уже доступні.</p><span class="hub-card-link">Почати курс →</span></a><article class="hub-card planned-card" id="level-hsk2"><span class="hub-card-icon">02</span><h2>HSK 2</h2><p>Продовження базового курсу з новими темами й діалогами.</p><span class="planned-label">Наступний етап</span></article><article class="hub-card planned-card" id="level-hsk3"><span class="hub-card-icon">03</span><h2>HSK 3</h2><p>Перехід до довших розмов і ширшої лексики.</p><span class="planned-label">Заплановано</span></article></div></section>` : '';
-  const body = `<div class="container article-layout">${pageIntro(page, route)}${sections.index}${sections.content}${content}${links}${special}</div>`;
-  return shell(page, route, body);
+  const body = `<div class="container article-layout">${pageIntro(pageDetails, route)}${sections.index}${sections.content}${content}${links}${contactContent}${special}</div>`;
+  return shell(pageDetails, route, body);
+}
+
+function renderNotFound() {
+  const page = { title: 'Сторінку не знайдено', description: 'Сторінку не знайдено. Перейдіть до головної, уроків HSK або словника Chinese UA.', lead: 'Можливо, адресу змінено або сторінка більше не існує.', robots: 'noindex' };
+  const body = `<div class="container article-layout not-found-page"><div class="eyebrow">404</div><h1>Сторінку не знайдено</h1><p class="article-lead">Можливо, адресу змінено або сторінка більше не існує.</p><nav class="related-links" aria-label="Корисні сторінки"><a class="button primary" href="/">На головну</a><a class="button secondary" href="/hsk/">До HSK</a><a class="button secondary" href="/vocabulary/">До словника</a><a class="button secondary" href="/tools/flashcards/">До Flashcards</a></nav></div>`;
+  return shell(page, '404.html', body);
 }
 
 function renderFlashcards(page, route) {
@@ -274,9 +290,10 @@ function renderHome() {
 }
 
 const pageByRoute = new Map();
-function addPage(route, title, description, lead = description, metaTitle = null) { pageByRoute.set(route, { route, title, description, lead, metaTitle }); }
+function addPage(route, title, description, lead = description, metaTitle = null) { pageByRoute.set(route, { route, title, description, lead, metaTitle, noindex: route === 'china/' }); }
 addPage('/', 'Китайська мова для українців', 'Вивчайте китайську від нуля українською: Pinyin, HSK, граматика, тематичні слова й діалоги. Безкоштовні уроки Chinese UA.', 'Вивчайте китайську від нуля — з поясненнями українською.');
 for (const page of hubs) addPage(page.route, page.title, page.description, page.lead);
+pageByRoute.set('tools/', { ...pageByRoute.get('tools/'), description: 'Відкрийте Flashcards Chinese UA для повторення слів і збереження особистого прогресу у браузері.', lead: 'Наразі доступні картки для повторення. Інші інструменти з’являтимуться окремо після завершення розробки.' });
 addPage('tools/flashcards/', 'Картки для вивчення китайських слів', 'Повторюйте китайські слова за темами. Позначайте слова, які вже знаєте, і повертайтеся до складних.', 'Повторюйте китайські слова за темами. Позначайте слова, які вже знаєте, і повертайтеся до складних.', 'Картки китайських слів українською | Chinese UA');
 for (const item of pinyinPages) addPage(`pinyin/${item.slug}/`, item.title, `${item.intro} Приклади й пояснення українською.`, item.intro);
 for (const item of vocabulary) addPage(`vocabulary/${item.slug}/`, item.title, `${item.intro} Китайські ієрогліфи, Pinyin, переклад і приклади.`, item.intro);
@@ -302,11 +319,12 @@ function build() {
     fs.mkdirSync(path.dirname(destination), { recursive: true });
     fs.writeFileSync(destination, page.render(), 'utf8');
   }
+  fs.writeFileSync(path.join(output, '404.html'), renderNotFound(), 'utf8');
   for (const legacyPage of ['pinyin-tones.html', 'first-phrases.html', 'numbers-prices.html']) {
     const legacyFile = path.join(output, legacyPage);
     if (fs.existsSync(legacyFile)) fs.unlinkSync(legacyFile);
   }
-  const urls = pages.map(page => `  <url><loc>${urlFor(page.route)}</loc></url>`).join('\n');
+  const urls = pages.filter(page => !pageByRoute.get(page.route)?.noindex).map(page => `  <url><loc>${urlFor(page.route)}</loc></url>`).join('\n');
   fs.writeFileSync(path.join(output, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`, 'utf8');
   fs.writeFileSync(path.join(output, '_redirects'), [
     '/pinyin-tones.html /pinyin/tones/ 301',

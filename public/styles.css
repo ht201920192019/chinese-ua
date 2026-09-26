@@ -1346,6 +1346,12 @@ a:focus-visible, button:focus-visible, summary:focus-visible {
   border-radius: 16px;
   background: #fff;
 }
+.notice-card {
+  padding: 14px 16px;
+  border-left: 4px solid var(--brand-red);
+  border-radius: 10px;
+  background: #fff7f7;
+}
 .grammar-box {
   border-left: 4px solid #dc2626;
   background: #fff7f7;

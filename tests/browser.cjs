@@ -17,7 +17,7 @@ function walk(directory, base = '') {
 }
 
 const allFiles = walk(root);
-const htmlFiles = allFiles.filter(file => file.endsWith('.html'));
+const htmlFiles = allFiles.filter(file => file.endsWith('.html') && file !== '404.html');
 const routes = htmlFiles.map(file => file === 'index.html' ? '/' : `/${file.slice(0, -'index.html'.length)}`);
 const htmlByRoute = new Map(routes.map((route, index) => [route, fs.readFileSync(path.join(root, htmlFiles[index]), 'utf8')]));
 const idsByRoute = new Map([...htmlByRoute].map(([route, html]) => [route, new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]))]));
@@ -110,7 +110,18 @@ const server = http.createServer((req, res) => {
 
     const sitemap = await (await page.request.get(`${baseUrl}/sitemap.xml`)).text();
     const sitemapRoutes = [...sitemap.matchAll(/<loc>https:\/\/chinese-ua\.pp\.ua([^<]*)<\/loc>/g)].map(match => match[1]);
-    assert.deepEqual([...sitemapRoutes].sort(), [...routes].sort(), 'sitemap should contain every canonical page exactly once');
+    const indexableRoutes = routes.filter(route => route !== '/china/');
+    assert.deepEqual([...sitemapRoutes].sort(), [...indexableRoutes].sort(), 'sitemap should contain only indexable canonical pages exactly once');
+    assert.equal(sitemapRoutes.includes('/china/'), false, 'placeholder cultural hub should stay out of sitemap');
+
+    const notFoundResponse = await page.request.get(`${baseUrl}/404.html`);
+    assert.equal(notFoundResponse.status(), 200);
+    const notFoundPage = await browser.newPage();
+    await notFoundPage.goto(`${baseUrl}/404.html`);
+    assert.equal(await notFoundPage.locator('meta[name="robots"]').getAttribute('content'), 'noindex');
+    for (const href of ['/', '/hsk/', '/vocabulary/', '/tools/flashcards/']) assert.equal(await notFoundPage.locator(`main a[href="${href}"]`).count(), 1, `404 should link to ${href}`);
+    assert.equal(sitemapRoutes.includes('/404.html'), false, '404 must stay out of sitemap');
+    await notFoundPage.close();
 
     for (const [oldPath, destination] of [
       ['/pinyin-tones.html', '/pinyin/tones/'],
@@ -152,6 +163,31 @@ const server = http.createServer((req, res) => {
         assert.equal(await page.locator('[data-topic-filter] option').count(), 7);
         assert.equal(await page.locator('footer a[href="/tools/flashcards/"]').count(), 1, 'footer should link to the flashcards page');
       }
+      if (route === '/china/') {
+        assert.equal(await page.locator('meta[name="robots"]').getAttribute('content'), 'noindex,follow');
+      }
+      if (route === '/privacy/') {
+        const privacyText = await page.locator('main').innerText();
+        for (const phrase of ['localStorage', 'chineseUaLearningProgressV1', 'Cloudflare', 'Speech Synthesis', 'Синхронізації між пристроями зараз немає']) assert.ok(privacyText.includes(phrase), `privacy page should explain ${phrase}`);
+        for (const phrase of ['завершені уроки', 'вивчені слова', 'результати Quiz', 'не надсилаються автоматично']) assert.ok(privacyText.includes(phrase), `privacy page should describe ${phrase}`);
+      }
+      if (route === '/contact/') {
+        const contactText = await page.locator('main').innerText();
+        assert.match(contactText, /Публічну адресу для зв’язку ще не опубліковано/);
+        for (const phrase of ['URL сторінки', 'китайське речення', 'Pinyin', 'українське пояснення', 'запропоноване виправлення']) assert.ok(contactText.includes(phrase), `contact page should request ${phrase}`);
+        assert.equal(await page.locator('main a[href^="mailto:"]').count(), 0, 'contact should not invent an email address');
+      }
+      if (route === '/tools/') {
+        const toolsText = await page.locator('main').innerText();
+        assert.ok(toolsText.indexOf('Доступно') < toolsText.indexOf('Незабаром'));
+        assert.ok(toolsText.includes('Відкрити Flashcards'));
+        assert.ok(toolsText.includes('Конвертер Pinyin'));
+        assert.ok(toolsText.includes('ще не доступні'));
+        assert.equal(await page.locator('footer a[href="/tools/#hsk-test"]').count(), 0);
+      }
+      const footerHrefs = await page.locator('footer a[href]').evaluateAll(anchors => anchors.map(anchor => anchor.getAttribute('href')));
+      for (const href of ['/dialogues/', '/tools/flashcards/', '/about/', '/contact/', '/privacy/', '/terms/']) assert.ok(footerHrefs.includes(href), `footer should contain ${href}`);
+      assert.equal(footerHrefs.includes('/tools/#hsk-test'), false, 'footer must not advertise an unimplemented test');
       if (route.startsWith('/vocabulary/') && route !== '/vocabulary/') {
         assert.ok(await page.locator('#word-list .word-card').count() > 0, `${route} should render its vocabulary entries`);
         const topic = vocabulary.find(group => route === `/vocabulary/${group.slug}/`);

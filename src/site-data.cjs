@@ -3,6 +3,8 @@ const word = (hanzi, pinyin, uk, example, examplePinyin, exampleUk, image, image
   ...(image ? { image, imageAlt: imageAlt || '' } : {}),
 });
 
+const site = { contactEmail: '' };
+
 const vocabulary = [
   { slug: 'greetings', title: 'Привітання та знайомство', intro: 'Фрази для першої розмови: привітайтеся, назвіть себе й запитайте ім’я співрозмовника.', words: [
     word('你好', 'nǐ hǎo', 'привіт', '你好！', 'Nǐ hǎo!', 'Привіт!'),
@@ -211,4 +213,4 @@ for (const group of vocabulary) {
   }
 }
 
-module.exports = { vocabulary, grammar, dialogues, hskLessons, hskQuizzes, pinyinPages, hubs, characters };
+module.exports = { site, vocabulary, grammar, dialogues, hskLessons, hskQuizzes, pinyinPages, hubs, characters };
