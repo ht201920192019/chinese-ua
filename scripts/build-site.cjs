@@ -37,7 +37,7 @@ function footer() {
   return `<footer class="site-footer"><div class="container footer-grid">
     <div class="footer-brand"><a href="/" class="footer-logo">Chinese UA</a><p>Китайська мова для українців.</p><span>中文 · Українська</span></div>
     <div><h2>Навчання</h2><a href="/hsk/">HSK</a><a href="/pinyin/">Pinyin</a><a href="/grammar/">Граматика</a><a href="/vocabulary/">Слова</a></div>
-    <div><h2>Практика</h2><a href="/dialogues/">Діалоги</a><a href="/tools/#hsk-test">Тести</a><a href="/tools/#flashcards">Картки</a></div>
+    <div><h2>Практика</h2><a href="/dialogues/">Діалоги</a><a href="/tools/#hsk-test">Тести</a><a href="/tools/flashcards/">Картки</a></div>
     <div><h2>Chinese UA</h2><a href="/about/">Про проєкт</a><a href="/contact/">Контакт</a><a href="/privacy/">Конфіденційність</a><a href="/terms/">Умови</a></div>
   </div><div class="container footer-bottom"><span>Навчальні матеріали українською</span><span>© Chinese UA</span></div></footer>
   <p id="actionStatus" class="action-status" role="status" aria-live="polite" aria-atomic="true"></p>`;
@@ -58,7 +58,7 @@ function breadcrumbs(route) {
 function head(page, route) {
   const canonical = urlFor(route);
   const description = page.description || `${page.title} — урок китайської мови українською з Pinyin, прикладами та практикою. Chinese UA.`;
-  const title = `${page.title} | Chinese UA`;
+  const title = page.metaTitle || `${page.title} | Chinese UA`;
   const crumbItems = route === '/' ? [] : [['Головна', '/'], ...route.split('/').filter(Boolean).map((part, index, parts) => {
     const current = `${parts.slice(0, index + 1).join('/')}/`;
     return [pageByRoute.get(current)?.title || part, current];
@@ -117,12 +117,39 @@ function renderHub(page, route) {
   const sections = renderSections((page.sections || []).map(([title, text]) => ({ title, text })));
   const content = page.cards ? cards(page.cards) : '';
   const links = page.links ? `<nav class="related-links" aria-label="Пов’язані навчальні сторінки">${page.links.map(target => `<a class="button secondary" href="/${target}">${esc(pageByRoute.get(target)?.title || target)} →</a>`).join('')}</nav>` : '';
-  const special = route === 'tools/' ? `<div id="hsk-test" class="tool-slot"><h2>Тест HSK</h2><p>Завдання для самоперевірки з’являться разом із наступними матеріалами курсу.</p></div><div id="flashcards" class="tool-slot"><h2>Картки для повторення</h2><p>Поки що слова можна повторювати у тематичних словниках.</p></div>`
+  const special = route === 'tools/' ? `<div id="hsk-test" class="tool-slot"><h2>Тест HSK</h2><p>Інтерактивні завдання для самоперевірки за курсом з’являться в наступному етапі.</p></div><div id="flashcards" class="tool-slot"><h2>Картки для повторення</h2><p>Повторюйте слова за темами й позначайте ті, які вже знаєте.</p><a class="button primary" href="/tools/flashcards/">Відкрити картки →</a></div>`
     : route === 'hsk/hsk1/' ? `<section class="course-progress" data-course-progress aria-labelledby="courseProgressTitle"><h2 id="courseProgressTitle">Прогрес курсу</h2><p><span data-progress-count>0 / ${hskLessons.length} уроків завершено</span></p><div class="progress-track" role="progressbar" aria-label="Прогрес курсу HSK 1" aria-valuemin="0" aria-valuemax="${hskLessons.length}" aria-valuenow="0"><span class="progress-fill" data-progress-fill></span></div></section>`
     : route === 'characters/' ? `<section id="basic-characters" class="article-section"><h2>50 базових ієрогліфів</h2><div class="cards three vocabulary-grid">${characters.map((item, index) => wordCard(item, `character-${index + 1}`, false)).join('')}</div></section>`
     : route === 'hsk/' ? `<section class="article-section"><h2>Навчальний шлях за рівнями</h2><div class="cards three level-grid"><a class="hub-card" id="level-hsk1" href="/hsk/hsk1/"><span class="hub-card-icon">01</span><h2>HSK 1</h2><p>П’ять початкових уроків уже доступні.</p><span class="hub-card-link">Почати курс →</span></a><article class="hub-card planned-card" id="level-hsk2"><span class="hub-card-icon">02</span><h2>HSK 2</h2><p>Продовження базового курсу з новими темами й діалогами.</p><span class="planned-label">Наступний етап</span></article><article class="hub-card planned-card" id="level-hsk3"><span class="hub-card-icon">03</span><h2>HSK 3</h2><p>Перехід до довших розмов і ширшої лексики.</p><span class="planned-label">Заплановано</span></article></div></section>` : '';
   const body = `<div class="container article-layout">${pageIntro(page, route)}${sections.index}${sections.content}${content}${links}${special}</div>`;
   return shell(page, route, body);
+}
+
+function renderFlashcards(page, route) {
+  const words = vocabulary.flatMap(group => group.words.map(item => ({
+    id: `${group.slug}:${item.hanzi}`,
+    topic: group.slug,
+    topicTitle: group.title,
+    hanzi: item.hanzi,
+    pinyin: item.pinyin,
+    uk: item.uk,
+    example: item.example || '',
+    examplePinyin: item.examplePinyin || '',
+    exampleUk: item.exampleUk || '',
+  })));
+  const topicLabels = { greetings: 'Привітання', numbers: 'Числа', family: 'Сім’я', food: 'Їжа', transport: 'Транспорт', work: 'Робота' };
+  const topicOptions = [['all', 'Усі слова'], ...vocabulary.map(group => [group.slug, topicLabels[group.slug] || group.title])];
+  const markup = `<div class="container article-layout flashcards-page" data-flashcard-app data-words="${esc(JSON.stringify(words))}">${pageIntro(page, route, 'Інструмент для повторення')}<div class="flashcard-toolbar">
+    <label>Тема<select data-topic-filter aria-label="Оберіть тему">${topicOptions.map(([value, label]) => `<option value="${esc(value)}">${esc(label)}</option>`).join('')}</select></label>
+    <label>Режим<select data-review-mode aria-label="Оберіть режим повторення"><option value="all">Усі слова</option><option value="unknown">Ще не знаю</option><option value="known">Вивчені</option></select></label>
+    <button class="button secondary" type="button" data-shuffle>Перемішати</button>
+  </div><div class="flashcard-progress" data-flashcard-progress aria-live="polite">Картки завантажуються…</div>
+  <section class="flashcard-stage" data-flashcard-stage aria-label="Картка зі словом"><div class="flashcard-shell" data-flashcard-shell></div><nav class="flashcard-navigation" aria-label="Навігація картками"><button class="button secondary" type="button" data-previous>← Назад</button><button class="button secondary" type="button" data-next>Далі →</button></nav></section>
+  <section class="flashcard-empty" data-flashcard-empty hidden aria-live="polite"><p data-empty-message></p><button class="button primary" type="button" data-start-review>Почати повторення</button></section>
+  <p class="flashcard-shortcuts" tabindex="0">Клавіатура: пробіл або Enter — показати відповідь; ← / → — попередня чи наступна картка.</p>
+  <noscript><p class="flashcard-noscript">Для роботи карток увімкніть JavaScript. Увесь словник доступний на сторінці <a href="/vocabulary/">«Слова»</a>.</p></noscript>
+  <a class="button secondary flashcard-return" href="/vocabulary/">← До словника</a></div>`;
+  return shell(page, route, markup);
 }
 
 function renderVocabulary(group) {
@@ -213,7 +240,7 @@ function renderHome() {
     ['/chinese-for-beginners/', 'З нуля'], ['/pinyin/', 'Pinyin'], ['/hsk/hsk1/', 'HSK 1'], ['/hsk/#level-hsk2', 'HSK 2'], ['/hsk/#level-hsk3', 'HSK 3'],
   ];
   const body = `<section class="hero"><div class="container hero-grid"><div><div class="eyebrow">🇺🇦 Українською · 🇨🇳 Китайською</div><h1>Китайська мова <span>для українців</span></h1><p class="hero-copy">Вивчайте китайську від нуля — з поясненнями українською.</p><p class="hero-support">Pinyin, вимова, HSK, граматика, слова та живі діалоги. Без потреби переходити через англійську.</p><div class="hero-actions"><a class="button primary" href="/chinese-for-beginners/">Почати з нуля</a><a class="button secondary" href="/hsk/hsk1/">Перейти до HSK 1</a></div></div><div class="hero-card learning-item" id="dailyQuote"><div class="card-label">Сьогоднішня фраза</div><b lang="zh-CN">我想学中文。</b><span class="reading" lang="zh-Latn">Wǒ xiǎng xué Zhōngwén.</span><span class="translation">Я хочу вивчати китайську мову.</span><div class="daily-actions"><button type="button" class="audio-button" data-speak="dailyQuote" hidden>▶ Прослухати</button><button type="button" class="button secondary copy-button" id="copyDaily" hidden>Копіювати фразу</button></div><small class="hint">Для озвучення потрібен китайський голос на вашому пристрої.</small></div></div></section>
-  <section class="section learning-dashboard" aria-labelledby="learningTitle"><div class="container"><div class="section-heading"><span>00</span><div><h2 id="learningTitle">Ваше навчання</h2><p data-dashboard-prompt>Почніть свій перший урок</p></div></div><div class="dashboard-card" data-learning-dashboard><div class="dashboard-next"><span class="dashboard-label">Ваш наступний крок</span><a class="button primary" data-continue-learning href="/hsk/hsk1/lesson-1/">Почніть свій перший урок →</a></div><div class="dashboard-stats"><div><strong data-completed-total>0</strong><span>завершено уроків</span></div><div><strong data-known-total>0</strong><span>слів знаю</span></div><div class="dashboard-recent"><strong data-recent-lesson>Ще немає</strong><span>останній урок</span></div></div></div></div></section>
+  <section class="section learning-dashboard" aria-labelledby="learningTitle"><div class="container"><div class="section-heading"><span>00</span><div><h2 id="learningTitle">Ваше навчання</h2><p data-dashboard-prompt>Почніть свій перший урок</p></div></div><div class="dashboard-card" data-learning-dashboard><div class="dashboard-next"><span class="dashboard-label">Ваш наступний крок</span><a class="button primary" data-continue-learning href="/hsk/hsk1/lesson-1/">Почніть свій перший урок →</a></div><div class="dashboard-stats"><div><strong data-completed-total>0</strong><span>завершено уроків</span></div><div><strong data-known-total>0</strong><span>Вивчено слів</span></div><div class="dashboard-recent"><strong data-recent-lesson>Ще немає</strong><span>останній урок</span></div></div></div></div></section>
   <section class="section" id="start"><div class="container"><div class="section-heading"><span>01</span><div><h2>Оберіть свій шлях</h2><p>Короткі уроки з практикою та зрозумілою послідовністю.</p></div></div><div class="cards four entry-grid">${entries.map(([href, title, text]) => `<a class="entry-card" href="${href}"><span aria-hidden="true">→</span><h3>${title}</h3><p>${text}</p></a>`).join('')}</div></div></section>
   <section class="section soft"><div class="container"><div class="section-heading"><span>02</span><div><h2>Навчальний маршрут</h2><p>Кожен етап спирається на попередній; до пройдених уроків можна повертатися.</p></div></div><ol class="learning-path">${routeSteps.map(([href, title], index) => `<li><a href="${href}"><span>${index + 1}</span>${title}</a></li>`).join('')}</ol></div></section>
   <section class="section"><div class="container"><div class="section-heading"><span>03</span><div><h2>Популярні уроки</h2><p>Відповіді на часті запитання та перші кроки для розмови.</p></div></div>${cards(popular.map(([route, title, text]) => ({ route: route.replace(/^\//, ''), title, text })), 'two')}</div></section>
@@ -222,9 +249,10 @@ function renderHome() {
 }
 
 const pageByRoute = new Map();
-function addPage(route, title, description, lead = description) { pageByRoute.set(route, { route, title, description, lead }); }
+function addPage(route, title, description, lead = description, metaTitle = null) { pageByRoute.set(route, { route, title, description, lead, metaTitle }); }
 addPage('/', 'Китайська мова для українців', 'Вивчайте китайську від нуля українською: Pinyin, HSK, граматика, тематичні слова й діалоги. Безкоштовні уроки Chinese UA.', 'Вивчайте китайську від нуля — з поясненнями українською.');
 for (const page of hubs) addPage(page.route, page.title, page.description, page.lead);
+addPage('tools/flashcards/', 'Картки для вивчення китайських слів', 'Повторюйте китайські слова за темами. Позначайте слова, які вже знаєте, і повертайтеся до складних.', 'Повторюйте китайські слова за темами. Позначайте слова, які вже знаєте, і повертайтеся до складних.', 'Картки китайських слів українською | Chinese UA');
 for (const item of pinyinPages) addPage(`pinyin/${item.slug}/`, item.title, `${item.intro} Приклади й пояснення українською.`, item.intro);
 for (const item of vocabulary) addPage(`vocabulary/${item.slug}/`, item.title, `${item.intro} Китайські ієрогліфи, Pinyin, переклад і приклади.`, item.intro);
 for (const item of grammar) addPage(`grammar/${item.slug}/`, item.title, `${item.role} Модель, приклади, типові помилки та вправа українською.`, item.role);
@@ -235,6 +263,7 @@ function build() {
   const pages = [];
   pages.push({ route: '/', render: renderHome });
   for (const hub of hubs) pages.push({ route: hub.route, render: () => renderHub(hub, hub.route) });
+  pages.push({ route: 'tools/flashcards/', render: () => renderFlashcards(pageByRoute.get('tools/flashcards/'), 'tools/flashcards/') });
   for (const item of pinyinPages) pages.push({ route: `pinyin/${item.slug}/`, render: () => renderPinyin(item) });
   for (const item of vocabulary) pages.push({ route: `vocabulary/${item.slug}/`, render: () => renderVocabulary(item) });
   for (const item of grammar) pages.push({ route: `grammar/${item.slug}/`, render: () => renderGrammar(item) });

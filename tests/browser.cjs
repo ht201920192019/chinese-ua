@@ -50,7 +50,7 @@ const server = http.createServer((req, res) => {
 });
 
 (async () => {
-  assert.equal(htmlFiles.length, 42, 'expected all 42 planned HTML pages to be generated');
+  assert.equal(htmlFiles.length, 43, 'expected all 43 planned HTML pages to be generated');
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const baseUrl = `http://127.0.0.1:${server.address().port}`;
   const browser = await chromium.launch({ headless: true, channel: 'msedge' });
@@ -94,6 +94,18 @@ const server = http.createServer((req, res) => {
       assert.ok(await page.locator('footer.site-footer').count());
       if (route === '/characters/') assert.equal(await page.locator('#basic-characters .word-card').count(), 50);
       if (route === '/hsk/hsk1/') assert.equal(await page.locator('.hub-cards .hub-card').count(), 5);
+      if (route === '/tools/flashcards/') {
+        assert.equal(await page.title(), 'Картки китайських слів українською | Chinese UA');
+        assert.equal(await page.locator('h1').textContent(), 'Картки для вивчення китайських слів');
+        assert.match(await page.locator('meta[name="description"]').getAttribute('content'), /Повторюйте китайські слова за темами/);
+        assert.equal(await page.locator('[data-flashcard-app]').getAttribute('data-words') !== null, true);
+        assert.equal(await page.locator('[data-flashcard-app]').evaluate(element => {
+          const ids = JSON.parse(element.dataset.words).map(word => word.id);
+          return ids.length === 53 && new Set(ids).size === ids.length;
+        }), true, 'all 53 vocabulary records should have unique stable card IDs');
+        assert.equal(await page.locator('[data-topic-filter] option').count(), 7);
+        assert.equal(await page.locator('footer a[href="/tools/flashcards/"]').count(), 1, 'footer should link to the flashcards page');
+      }
       if (route.startsWith('/hsk/hsk1/lesson-')) {
         for (const section of ['words', 'grammar', 'dialogue', 'pronunciation', 'practice', 'summary']) {
           assert.equal(await page.locator(`#${section}`).count(), 1, `${route} is missing its ${section} lesson section`);
@@ -237,6 +249,100 @@ const server = http.createServer((req, res) => {
     await page.setViewportSize({ width: 320, height: 812 });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'quiz should not overflow on a 320px mobile viewport');
 
+    await page.evaluate(() => {
+      localStorage.setItem('chineseUaLearningProgressV1', JSON.stringify({
+        lessons: [{ slug: 'lesson-2', completed: true, completedAt: '2026-02-01T00:00:00.000Z' }],
+        knownWords: [],
+        quizResults: [{ slug: 'lesson-2', score: 3, total: 5, percentage: 60, completedAt: '2026-02-02T00:00:00.000Z' }],
+      }));
+    });
+    await page.goto(`${baseUrl}/tools/flashcards/`);
+    const flashcard = page.locator('[data-flashcard-app]');
+    const face = page.locator('[data-flashcard-front]');
+    assert.equal(await flashcard.count(), 1, 'flashcards page should initialize');
+    assert.equal(await page.locator('[data-flashcard-progress]').textContent(), 'Картка 1 з 53 · Вивчено: 0 / 53');
+    assert.equal(await face.locator('[lang="zh-CN"]').textContent(), '你好');
+    assert.equal(await page.locator('[data-flashcard-back]').isVisible(), false, 'answer should be hidden on the front');
+    assert.equal(await page.locator('[data-flashcard-back]').getByText('привіт').count(), 2, 'answer and example translation should be in the hidden back face');
+    await face.click();
+    assert.equal(await page.locator('[data-flashcard-back]').isVisible(), true, 'flip button should reveal the answer');
+    assert.equal(await page.locator('[data-flashcard-back] [lang="zh-Latn"]').first().textContent(), 'nǐ hǎo');
+    assert.equal(await page.locator('[data-flashcard-back] [data-speak]').isVisible(), true, 'back should have the Chinese speech control');
+    await page.locator('[data-next]').click();
+    assert.equal(await page.locator('[data-flashcard-front] [lang="zh-CN"]').textContent(), '您好', 'next should advance one card');
+    await page.locator('[data-previous]').click();
+    assert.equal(await page.locator('[data-flashcard-front] [lang="zh-CN"]').textContent(), '你好', 'previous should return to the prior card');
+    await page.locator('[data-flashcard-front]').focus();
+    await page.keyboard.press('Space');
+    assert.equal(await page.locator('[data-flashcard-back]').isVisible(), true, 'Space on the flip control should reveal the card');
+    await page.locator('.flashcard-shortcuts').focus();
+    await page.keyboard.press('ArrowRight');
+    assert.equal(await page.locator('[data-flashcard-front] [lang="zh-CN"]').textContent(), '您好', 'ArrowRight should advance when focus is outside controls');
+    await page.keyboard.press('ArrowLeft');
+    assert.equal(await page.locator('[data-flashcard-front] [lang="zh-CN"]').textContent(), '你好', 'ArrowLeft should go back when focus is outside controls');
+    await page.locator('[data-next]').focus();
+    await page.keyboard.press('ArrowRight');
+    assert.equal(await page.locator('[data-flashcard-front] [lang="zh-CN"]').textContent(), '你好', 'arrow shortcuts should not fire while a button is focused');
+
+    await page.locator('[data-topic-filter]').selectOption('family');
+    assert.equal(await page.locator('[data-flashcard-progress]').textContent(), 'Картка 1 з 6 · Вивчено: 0 / 6', 'topic filter should scope the current words');
+    await page.locator('[data-review-mode]').selectOption('known');
+    assert.equal(await page.locator('[data-empty-message]').textContent(), 'Ви ще не позначили жодного слова як вивчене.');
+    await page.locator('[data-start-review]').click();
+    await page.locator('[data-topic-filter]').selectOption('all');
+    await page.locator('[data-review-mode]').selectOption('unknown');
+    assert.equal(await page.locator('[data-flashcard-progress]').textContent(), 'Картка 1 з 53 · Вивчено: 0 / 53');
+    await page.locator('[data-review-mode]').selectOption('all');
+    await page.locator('[data-flashcard-front]').click();
+    await page.locator('[data-mark-word="known"]').click();
+    let flashProgress = await page.evaluate(() => JSON.parse(localStorage.getItem('chineseUaLearningProgressV1')));
+    assert.deepEqual(flashProgress.knownWords, ['greetings:你好'], 'known words should use stable topic:hanzi IDs');
+    assert.equal(flashProgress.lessons[0].slug, 'lesson-2', 'flashcard updates must preserve lesson progress');
+    assert.equal(flashProgress.quizResults[0].score, 3, 'flashcard updates must preserve quiz results');
+    await page.goto(baseUrl);
+    assert.equal(await page.locator('[data-known-total]').textContent(), '1', 'homepage learned-word statistic should update from knownWords');
+    await page.goto(`${baseUrl}/tools/flashcards/`);
+    await page.locator('[data-topic-filter]').selectOption('greetings');
+    await page.locator('[data-review-mode]').selectOption('unknown');
+    assert.equal(await page.locator('[data-flashcard-progress]').textContent(), 'Картка 1 з 5 · Вивчено: 1 / 6', 'unknown mode should exclude learned cards');
+    await page.locator('[data-review-mode]').selectOption('known');
+    assert.equal(await page.locator('[data-flashcard-progress]').textContent(), 'Картка 1 з 1 · Вивчено: 1 / 6');
+    await page.locator('[data-flashcard-front]').click();
+    await page.locator('[data-mark-word="unknown"]').click();
+    flashProgress = await page.evaluate(() => JSON.parse(localStorage.getItem('chineseUaLearningProgressV1')));
+    assert.deepEqual(flashProgress.knownWords, [], 'marking unknown should remove an existing learned ID');
+    await page.reload();
+    assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('chineseUaLearningProgressV1')).lessons), flashProgress.lessons);
+    assert.deepEqual(await page.evaluate(() => JSON.parse(localStorage.getItem('chineseUaLearningProgressV1')).quizResults), flashProgress.quizResults);
+
+    await page.locator('[data-topic-filter]').selectOption('all');
+    await page.locator('[data-review-mode]').selectOption('all');
+    await page.evaluate(() => { Math.random = () => 0; });
+    const beforeShuffle = await page.locator('[data-flashcard-front] [lang="zh-CN"]').textContent();
+    await page.locator('[data-shuffle]').click();
+    const afterShuffle = await page.locator('[data-flashcard-front] [lang="zh-CN"]').textContent();
+    assert.notEqual(afterShuffle, beforeShuffle, 'shuffle should change the current card order without editing vocabulary data');
+    await page.goto(baseUrl);
+    assert.equal(await page.locator('[data-known-total]').textContent(), '0', 'homepage should show current learned word count after removals');
+    await page.goto(`${baseUrl}/tools/flashcards/`);
+    await page.evaluate(() => {
+      const progress = JSON.parse(localStorage.getItem('chineseUaLearningProgressV1'));
+      progress.knownWords = JSON.parse(document.querySelector('[data-flashcard-app]').dataset.words).filter(word => word.topic === 'greetings').map(word => word.id);
+      localStorage.setItem('chineseUaLearningProgressV1', JSON.stringify(progress));
+    });
+    await page.locator('[data-topic-filter]').selectOption('greetings');
+    await page.locator('[data-review-mode]').selectOption('unknown');
+    assert.equal(await page.locator('[data-empty-message]').textContent(), 'Чудово! Ви позначили всі слова цієї теми як вивчені.');
+    await page.goto(baseUrl);
+    await page.evaluate(() => localStorage.setItem('chineseUaLearningProgressV1', JSON.stringify({ lessons: [], knownWords: ['greetings:你好'], quizResults: [] })));
+    await page.reload();
+    assert.equal(await page.locator('[data-known-total]').textContent(), '1', 'homepage learned-word statistic should read knownWords');
+    for (const width of [320, 375, 390, 430]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto(`${baseUrl}/tools/flashcards/`);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `flashcards should not overflow at ${width}px`);
+    }
+
     await page.goto(baseUrl);
     await page.locator('#menuButton').click();
     assert.equal(await page.locator('#menuButton').getAttribute('aria-expanded'), 'true');
@@ -262,6 +368,7 @@ const server = http.createServer((req, res) => {
     });
     for (const route of routes) {
       await speechPage.goto(`${baseUrl}${route}`);
+      if (route === '/tools/flashcards/') await speechPage.locator('[data-flashcard-front]').click();
       const buttons = speechPage.locator('[data-speak]');
       const count = await buttons.count();
       for (let index = 0; index < count; index++) {
@@ -288,6 +395,10 @@ const server = http.createServer((req, res) => {
     await noJs.goto(baseUrl);
     assert.equal(await noJs.locator('#navLinks').isVisible(), true, 'navigation should remain available without JavaScript');
     assert.equal(await noJs.locator('[data-speak]').first().isVisible(), false, 'unavailable audio buttons should stay hidden without JavaScript');
+    await noJs.goto(`${baseUrl}/tools/flashcards/`);
+    assert.equal(await noJs.locator('h1').textContent(), 'Картки для вивчення китайських слів');
+    assert.equal(await noJs.locator('a.flashcard-return[href="/vocabulary/"]').count(), 1, 'flashcards should provide a vocabulary link without JavaScript');
+    assert.equal(await noJs.locator('.flashcard-noscript').isVisible(), true, 'flashcards should explain the JavaScript requirement');
     assert.deepEqual(errors, []);
     console.log(`PASS: ${routes.length} pages, all internal links, metadata, sitemap, redirects, four viewport widths, menu, copy, and ${[...htmlByRoute.values()].join('').match(/data-speak=/g)?.length || 0} audio controls.`);
   } finally {

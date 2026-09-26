@@ -396,11 +396,147 @@ function speakChinese(button) {
   catch { finishSpeech('Не вдалося почати озвучення. Спробуйте інший браузер або голос.'); }
 }
 
-if (speechAvailable) window.speechSynthesis.getVoices();
-document.querySelectorAll('[data-speak]').forEach(button => {
+function bindSpeechButton(button) {
+  if (button.dataset.speechBound) return;
+  button.dataset.speechBound = 'true';
   button.hidden = false;
   button.addEventListener('click', () => speakChinese(button));
-});
+}
+
+function initializeFlashcards(app) {
+  let words;
+  try { words = JSON.parse(app.dataset.words || '[]'); } catch { words = []; }
+  if (!Array.isArray(words) || !words.length) return;
+  const topicFilter = app.querySelector('[data-topic-filter]');
+  const modeFilter = app.querySelector('[data-review-mode]');
+  const shuffleButton = app.querySelector('[data-shuffle]');
+  const progressLabel = app.querySelector('[data-flashcard-progress]');
+  const stage = app.querySelector('[data-flashcard-stage]');
+  const cardShell = app.querySelector('[data-flashcard-shell]');
+  const emptyPanel = app.querySelector('[data-flashcard-empty]');
+  const emptyMessage = app.querySelector('[data-empty-message]');
+  const previousButton = app.querySelector('[data-previous]');
+  const nextButton = app.querySelector('[data-next]');
+  const startButton = app.querySelector('[data-start-review]');
+  const topicNames = { all: 'Усі слова', greetings: 'Привітання', numbers: 'Числа', family: 'Сім’я', food: 'Їжа', transport: 'Транспорт', work: 'Робота' };
+  let currentWords = [];
+  let topicWords = [];
+  let currentIndex = 0;
+  let isShuffled = false;
+  let isFlipped = false;
+
+  const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+  const knownSet = () => new Set(readLearningProgress().knownWords.filter(id => typeof id === 'string'));
+  const showFace = flipped => {
+    isFlipped = flipped;
+    const front = cardShell.querySelector('[data-flashcard-front]');
+    const back = cardShell.querySelector('[data-flashcard-back]');
+    if (front) front.hidden = flipped;
+    if (front) front.setAttribute('aria-expanded', String(flipped));
+    if (back) back.hidden = !flipped;
+  };
+
+  const renderCard = () => {
+    const word = currentWords[currentIndex];
+    if (!word) return;
+    const known = knownSet().has(word.id);
+    const speechTargetId = `flashcard-${word.topic}-${[...word.hanzi].map(character => character.codePointAt(0).toString(16)).join('-')}`;
+    const example = word.example ? `<div class="flashcard-example"><b lang="zh-CN">${escape(word.example)}</b><span lang="zh-Latn">${escape(word.examplePinyin)}</span><span>${escape(word.exampleUk)}</span></div>` : '';
+    cardShell.innerHTML = `<article class="flashcard-card" id="${escape(speechTargetId)}">
+      <button type="button" class="flashcard-face" data-flashcard-front aria-expanded="false" aria-controls="flashcardBack">
+        <span class="flashcard-topic">${escape(topicNames[word.topic] || word.topicTitle)}</span><b lang="zh-CN">${escape(word.hanzi)}</b><span class="flashcard-reveal">Показати відповідь</span>
+      </button>
+      <div class="flashcard-back" id="flashcardBack" data-flashcard-back hidden>
+        <div class="flashcard-answer"><b lang="zh-CN">${escape(word.hanzi)}</b><span class="flashcard-pinyin" lang="zh-Latn">${escape(word.pinyin)}</span><span class="flashcard-meaning">${escape(word.uk)}</span><button class="audio-button flashcard-audio" type="button" data-speak="${escape(speechTargetId)}" hidden>▶ Прослухати</button>${example}</div>
+        <button class="flashcard-hide" type="button" data-flip-back>Повернутися до слова</button>
+        <div class="flashcard-learning" aria-label="Позначити знання слова"><button class="button secondary" type="button" data-mark-word="unknown" aria-pressed="${!known}">Ще не знаю</button><button class="button primary" type="button" data-mark-word="known" aria-pressed="${known}">Знаю</button></div>
+      </div>
+    </article>`;
+    const front = cardShell.querySelector('[data-flashcard-front]');
+    front.addEventListener('click', () => { showFace(true); cardShell.querySelector('[data-flip-back]').focus({ preventScroll: true }); });
+    cardShell.querySelector('[data-flip-back]').addEventListener('click', () => { showFace(false); front.focus({ preventScroll: true }); });
+    cardShell.querySelector('[data-flashcard-back]').addEventListener('click', event => {
+      if (!event.target.closest('button')) { showFace(false); front.focus({ preventScroll: true }); }
+    });
+    cardShell.querySelectorAll('[data-mark-word]').forEach(button => button.addEventListener('click', () => {
+      const progress = readLearningProgress();
+      const ids = new Set(progress.knownWords.filter(id => typeof id === 'string'));
+      if (button.dataset.markWord === 'known') ids.add(word.id);
+      else ids.delete(word.id);
+      progress.knownWords = [...ids];
+      if (!saveLearningProgress(progress)) return;
+      updateLearningProgress();
+      announce(button.dataset.markWord === 'known' ? 'Слово додано до вивчених.' : 'Слово позначено для повторення.');
+      refreshDeck(false);
+    }));
+    bindSpeechButton(cardShell.querySelector('[data-speak]'));
+    showFace(false);
+  };
+
+  const render = () => {
+    const known = knownSet();
+    const learnedInTopic = topicWords.filter(word => known.has(word.id)).length;
+    progressLabel.textContent = currentWords.length
+      ? `Картка ${currentIndex + 1} з ${currentWords.length} · Вивчено: ${learnedInTopic} / ${topicWords.length}`
+      : `Вивчено: ${learnedInTopic} / ${topicWords.length}`;
+    if (!currentWords.length) {
+      stage.hidden = true;
+      emptyPanel.hidden = false;
+      if (modeFilter.value === 'known') emptyMessage.textContent = 'Ви ще не позначили жодного слова як вивчене.';
+      else if (modeFilter.value === 'unknown') emptyMessage.textContent = 'Чудово! Ви позначили всі слова цієї теми як вивчені.';
+      else emptyMessage.textContent = 'У цій темі ще немає слів.';
+      return;
+    }
+    emptyPanel.hidden = true;
+    stage.hidden = false;
+    renderCard();
+  };
+
+  function refreshDeck(resetShuffle = true) {
+    if (resetShuffle) isShuffled = false;
+    const known = knownSet();
+    topicWords = words.filter(word => topicFilter.value === 'all' || word.topic === topicFilter.value);
+    currentWords = modeFilter.value === 'known'
+      ? topicWords.filter(word => known.has(word.id))
+      : modeFilter.value === 'unknown' ? topicWords.filter(word => !known.has(word.id)) : [...topicWords];
+    if (isShuffled) {
+      for (let i = currentWords.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [currentWords[i], currentWords[j]] = [currentWords[j], currentWords[i]];
+      }
+    }
+    currentIndex = Math.min(currentIndex, Math.max(0, currentWords.length - 1));
+    render();
+  }
+
+  const changeCard = direction => {
+    if (!currentWords.length) return;
+    currentIndex = (currentIndex + direction + currentWords.length) % currentWords.length;
+    render();
+  };
+  topicFilter.addEventListener('change', () => { currentIndex = 0; refreshDeck(); });
+  modeFilter.addEventListener('change', () => { currentIndex = 0; refreshDeck(); });
+  shuffleButton.addEventListener('click', () => { isShuffled = true; currentIndex = 0; refreshDeck(false); announce('Порядок карток перемішано.'); });
+  previousButton.addEventListener('click', () => changeCard(-1));
+  nextButton.addEventListener('click', () => changeCard(1));
+  startButton.addEventListener('click', () => { modeFilter.value = 'all'; currentIndex = 0; refreshDeck(); });
+  app.addEventListener('keydown', event => {
+    if (event.target.closest('button, input, select, textarea, a, [contenteditable="true"]')) return;
+    if (event.key === 'ArrowLeft') { event.preventDefault(); changeCard(-1); }
+    else if (event.key === 'ArrowRight') { event.preventDefault(); changeCard(1); }
+    else if (event.key === ' ' || event.key === 'Enter') {
+      if (event.target.closest('.flashcard-shortcuts')) { event.preventDefault(); showFace(!isFlipped); }
+    }
+  });
+  const shortcuts = document.querySelector('.flashcard-shortcuts');
+  if (shortcuts) shortcuts.addEventListener('click', () => showFace(!isFlipped));
+  refreshDeck();
+}
+
+document.querySelectorAll('[data-flashcard-app]').forEach(initializeFlashcards);
+
+if (speechAvailable) window.speechSynthesis.getVoices();
+document.querySelectorAll('[data-speak]').forEach(bindSpeechButton);
 window.addEventListener('pagehide', () => {
   finishSpeech();
   if (speechAvailable) window.speechSynthesis.cancel();
