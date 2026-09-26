@@ -1,0 +1,11 @@
+{
+  "name": "chinese-ua-static-site",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/build-site.cjs",
+    "test": "node tests/browser.cjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  }
+}

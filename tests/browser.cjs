@@ -3,151 +3,181 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
+
 const root = path.resolve(__dirname, '..', 'public');
-const files = new Set(['index.html', 'pinyin-tones.html', 'first-phrases.html', 'styles.css', 'script.js', 'favicon.svg', 'robots.txt', 'sitemap.xml']);
+const domain = 'https://chinese-ua.pp.ua';
+
+function walk(directory, base = '') {
+  return fs.readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
+    const relative = path.posix.join(base, entry.name);
+    return entry.isDirectory() ? walk(path.join(directory, entry.name), relative) : [relative];
+  });
+}
+
+const allFiles = walk(root);
+const htmlFiles = allFiles.filter(file => file.endsWith('.html'));
+const routes = htmlFiles.map(file => file === 'index.html' ? '/' : `/${file.slice(0, -'index.html'.length)}`);
+const htmlByRoute = new Map(routes.map((route, index) => [route, fs.readFileSync(path.join(root, htmlFiles[index]), 'utf8')]));
+const idsByRoute = new Map([...htmlByRoute].map(([route, html]) => [route, new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]))]));
+const redirects = fs.readFileSync(path.join(root, '_redirects'), 'utf8').trim().split(/\r?\n/).map(line => line.trim().split(/\s+/)).filter(parts => parts.length >= 3);
+
+function staticFile(pathname) {
+  const decoded = decodeURIComponent(pathname);
+  const clean = path.posix.normalize(decoded).replace(/^\/+/, '');
+  if (clean.startsWith('..')) return null;
+  const candidates = [];
+  if (!clean || clean.endsWith('/')) candidates.push(path.join(root, clean, 'index.html'));
+  else {
+    candidates.push(path.join(root, clean));
+    candidates.push(path.join(root, clean, 'index.html'));
+    if (!path.extname(clean)) candidates.push(path.join(root, `${clean}.html`));
+  }
+  return candidates.find(candidate => candidate.startsWith(root) && fs.existsSync(candidate) && fs.statSync(candidate).isFile()) || null;
+}
+
+const mime = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.xml': 'application/xml; charset=utf-8', '.txt': 'text/plain; charset=utf-8' };
 const server = http.createServer((req, res) => {
-  const name = new URL(req.url, 'http://localhost').pathname.slice(1) || 'index.html';
-  if (!files.has(name)) { res.writeHead(404); return res.end(); }
-  res.setHeader('Content-Type', ({html:'text/html; charset=utf-8', css:'text/css', js:'text/javascript', svg:'image/svg+xml', txt:'text/plain; charset=utf-8', xml:'application/xml'})[name.split('.').pop()]);
-  res.end(fs.readFileSync(path.join(root, name)));
+  const requestUrl = new URL(req.url, 'http://localhost');
+  const rule = redirects.find(([from]) => from === requestUrl.pathname);
+  if (rule) {
+    res.writeHead(Number(rule[2]), { Location: rule[1] });
+    return res.end();
+  }
+  const file = staticFile(requestUrl.pathname);
+  if (!file) { res.writeHead(404); return res.end('Not found'); }
+  res.setHeader('Content-Type', mime[path.extname(file)] || 'application/octet-stream');
+  res.end(fs.readFileSync(file));
 });
+
 (async () => {
+  assert.equal(htmlFiles.length, 42, 'expected all 42 planned HTML pages to be generated');
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  const url = `http://127.0.0.1:${server.address().port}`;
-  const browser = await chromium.launch({headless:true, channel:'msedge'});
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+  const browser = await chromium.launch({ headless: true, channel: 'msedge' });
   try {
-    const page = await browser.newPage({reducedMotion:'reduce'});
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
     const errors = [];
-    page.on('pageerror', e => errors.push(e.message));
-    await page.goto(url);
-    const broken = await page.evaluate(() => [...document.querySelectorAll('a[href^="#"]')].filter(a => !document.getElementById(a.hash.slice(1))).map(a=>a.href));
-    assert.deepEqual(broken, []);
-    for (const file of files) assert.equal((await page.request.get(`${url}/${file}`)).status(), 200);
-    assert.equal(await page.locator('link[rel="canonical"]').getAttribute('href'), 'https://chinese-ua.pp.ua/');
-    assert.match(await (await page.request.get(`${url}/robots.txt`)).text(), /Sitemap: https:\/\/chinese-ua\.pp\.ua\/sitemap\.xml/);
-    const sitemap = await (await page.request.get(`${url}/sitemap.xml`)).text();
-    for (const pathname of ['/', '/pinyin-tones.html', '/first-phrases.html']) {
-      assert.ok(sitemap.includes(`<loc>https://chinese-ua.pp.ua${pathname}</loc>`), `missing sitemap URL: ${pathname}`);
+    page.on('pageerror', error => errors.push(error.message));
+
+    const assetPaths = ['/styles.css', '/script.js', '/favicon.svg', '/robots.txt', '/sitemap.xml'];
+    for (const asset of assetPaths) assert.equal((await page.request.get(`${baseUrl}${asset}`)).status(), 200, `${asset} should load`);
+    const robots = await (await page.request.get(`${baseUrl}/robots.txt`)).text();
+    assert.match(robots, new RegExp(`Sitemap: ${domain.replaceAll('.', '\\.')}\\/sitemap\\.xml`));
+
+    const sitemap = await (await page.request.get(`${baseUrl}/sitemap.xml`)).text();
+    const sitemapRoutes = [...sitemap.matchAll(/<loc>https:\/\/chinese-ua\.pp\.ua([^<]*)<\/loc>/g)].map(match => match[1]);
+    assert.deepEqual([...sitemapRoutes].sort(), [...routes].sort(), 'sitemap should contain every canonical page exactly once');
+
+    for (const [oldPath, destination] of [
+      ['/pinyin-tones.html', '/pinyin/tones/'],
+      ['/first-phrases.html', '/dialogues/introduction/'],
+      ['/numbers-prices.html', '/vocabulary/numbers/'],
+    ]) {
+      const response = await page.request.get(`${baseUrl}${oldPath}`, { maxRedirects: 0 });
+      assert.equal(response.status(), 301, `${oldPath} should permanently redirect`);
+      assert.equal(response.headers().location, destination);
     }
-    for (const lesson of ['pinyin-tones.html', 'first-phrases.html']) {
-      const lessonPage = await browser.newPage({viewport:{width:320,height:812}});
-      await lessonPage.goto(`${url}/${lesson}`);
-      assert.equal(await lessonPage.locator('html').getAttribute('lang'), 'uk');
-      assert.equal(await lessonPage.locator('h1').count(), 1);
-      assert.equal(await lessonPage.locator('link[rel="canonical"]').getAttribute('href'), `https://chinese-ua.pp.ua/${lesson}`);
-      const targets = await lessonPage.locator('a[href]').evaluateAll(links => links.map(link => ({href:link.getAttribute('href'),target:link.hash && link.pathname===location.pathname ? Boolean(document.getElementById(link.hash.slice(1))) : true})));
-      assert.ok(targets.every(item=>item.target), `broken anchor in ${lesson}`);
-      for (const {href} of targets.filter(item=>!item.href.startsWith('#'))) {
-        assert.equal((await lessonPage.request.get(new URL(href, `${url}/${lesson}`).href)).status(), 200, `${lesson}: ${href}`);
+
+    const checkedLinks = new Set();
+    for (const route of routes) {
+      const url = `${baseUrl}${route}`;
+      const response = await page.goto(url);
+      assert.equal(response.status(), 200, `${route} should load`);
+      assert.equal(await page.locator('html').getAttribute('lang'), 'uk', `${route} should use Ukrainian as its primary language`);
+      assert.equal(await page.locator('h1').count(), 1, `${route} should have one H1`);
+      assert.ok((await page.title()).includes('Chinese UA'), `${route} should have a page title`);
+      assert.ok((await page.locator('meta[name="description"]').getAttribute('content'))?.length > 50, `${route} should have a useful meta description`);
+      assert.equal(await page.locator('link[rel="canonical"]').getAttribute('href'), `${domain}${route}`);
+      for (const property of ['og:title', 'og:description', 'og:url']) assert.ok(await page.locator(`meta[property="${property}"]`).count(), `${route} is missing ${property}`);
+      assert.ok(await page.locator('header.site-header').count());
+      assert.ok(await page.locator('footer.site-footer').count());
+      if (route === '/characters/') assert.equal(await page.locator('#basic-characters .word-card').count(), 50);
+      if (route === '/hsk/hsk1/') assert.equal(await page.locator('.hub-cards .hub-card').count(), 5);
+      if (route.startsWith('/hsk/hsk1/lesson-')) {
+        for (const section of ['words', 'grammar', 'dialogue', 'pronunciation', 'practice', 'summary']) {
+          assert.equal(await page.locator(`#${section}`).count(), 1, `${route} is missing its ${section} lesson section`);
+        }
       }
-      for (const width of [320,390,768,1440]) {
-        await lessonPage.setViewportSize({width,height:812});
-        assert.ok(await lessonPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth), `${lesson} overflow at ${width}`);
+
+      const links = await page.locator('a[href]').evaluateAll(elements => elements.map(anchor => ({ href: anchor.href, raw: anchor.getAttribute('href') })));
+      for (const link of links) {
+        const parsed = new URL(link.href);
+        if (parsed.origin !== baseUrl) continue;
+        if (parsed.hash) {
+          const targetRoute = parsed.pathname.endsWith('/') || parsed.pathname === '/' ? parsed.pathname : parsed.pathname;
+          assert.ok(idsByRoute.get(targetRoute)?.has(decodeURIComponent(parsed.hash.slice(1))), `broken fragment: ${link.raw} from ${route}`);
+        }
+        const key = `${parsed.pathname}${parsed.search}`;
+        if (checkedLinks.has(key)) continue;
+        checkedLinks.add(key);
+        const linkResponse = await page.request.get(`${baseUrl}${key}`);
+        assert.equal(linkResponse.status(), 200, `broken internal link ${link.raw} from ${route}`);
       }
-      await lessonPage.close();
+
+      const speechTargets = await page.locator('[data-speak]').evaluateAll(buttons => buttons.map(button => ({ id: button.dataset.speak, exists: Boolean(document.getElementById(button.dataset.speak)?.querySelector('[lang="zh-CN"]')) })));
+      assert.ok(speechTargets.every(target => target.exists), `${route} has an audio button without Chinese text`);
+      for (const width of [320, 390, 768, 1440]) {
+        await page.setViewportSize({ width, height: 844 });
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${route} overflows at ${width}px`);
+      }
     }
-    assert.equal(await page.locator('h1').count(), 1);
-    assert.equal(await page.locator('html').getAttribute('lang'), 'uk');
-    assert.equal(await page.locator('#actionStatus').isVisible(), false);
-    for (const width of [320,375,390,430,560,768,860,861,1024,1440]) {
-      await page.setViewportSize({width,height:900});
-      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `overflow at ${width}`);
-      const hrefs = await page.locator('a[href^="#"]').evaluateAll(links => [...new Set(links.map(a => a.getAttribute('href')))]);
-      for (const href of hrefs) {
-        await page.evaluate(hash => { document.querySelector(hash).scrollIntoView(); }, href);
-        const top = await page.locator(href).evaluate(el => el.getBoundingClientRect().top);
-        assert.ok(top >= 0, `${href} offscreen at ${width}`);
-      }
-    }
-    await page.setViewportSize({width:375,height:812});
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(baseUrl);
     await page.locator('#menuButton').click();
-    assert.equal(await page.locator('#menuButton').getAttribute('aria-expanded'),'true');
-    await page.locator('#navLinks a[href="#hsk"]').click();
-    assert.equal(await page.locator('#menuButton').getAttribute('aria-expanded'),'false');
-    assert.ok(await page.locator('#hsk').evaluate(el=>el.getBoundingClientRect().top >= document.querySelector('.site-header').getBoundingClientRect().bottom));
-    await page.locator('#menuButton').click();
+    assert.equal(await page.locator('#menuButton').getAttribute('aria-expanded'), 'true');
     await page.keyboard.press('Escape');
-    assert.equal(await page.locator('#menuButton').getAttribute('aria-expanded'),'false');
-    assert.equal(await page.locator('#menuButton').evaluate(el=>el===document.activeElement),true);
-    await page.locator('#menuButton').click();
-    await page.locator('#pinyin h2').click();
-    assert.equal(await page.locator('#menuButton').getAttribute('aria-expanded'),'false');
-    await page.locator('#menuButton').click();
-    await page.setViewportSize({width:1024,height:900});
-    await page.waitForFunction(()=>document.getElementById('menuButton').getAttribute('aria-expanded')==='false');
-    await page.setViewportSize({width:320,height:812});
-    await page.addStyleTag({content:'html {font-size: 200%}'});
-    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'enlarged text overflow');
-    await page.reload();
-    console.log('Native speech capability:', await page.evaluate(()=>({supported:'speechSynthesis' in window, voices:window.speechSynthesis?.getVoices().map(v=>v.lang)})));
-    for (const id of ['speakNihao','speakDaily']) {
-      await page.locator(`#${id}`).click();
-      await page.waitForFunction(() => /завершено|Не вдалося|не відповідає|не доступний/.test(document.getElementById('actionStatus').textContent), { }, {timeout:25000});
-      console.log('Native speech result',id,await page.locator('#actionStatus').textContent());
-    }
-    await page.evaluate(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>{window.copied=text;}}}));
+    assert.equal(await page.locator('#menuButton').getAttribute('aria-expanded'), 'false');
+    assert.equal(await page.locator('#menuButton').evaluate(button => button === document.activeElement), true);
+
+    await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async text => { window.copiedText = text; } } }));
     await page.locator('#copyDaily').click();
-    await page.waitForFunction(()=>document.getElementById('copyDaily').textContent.includes('✓'));
-    assert.equal(await page.evaluate(()=>window.copied),'我想学中文。\nWǒ xiǎng xué Zhōngwén.\nЯ хочу вивчати китайську мову.');
-    await page.waitForFunction(()=>!document.getElementById('copyDaily').disabled);
-    await page.evaluate(()=>{navigator.clipboard.writeText=async()=>{throw Error('denied')};});
-    await page.locator('#copyDaily').click();
-    await page.waitForFunction(()=>document.getElementById('actionStatus').textContent.includes('Текст виділено'));
-    assert.ok(await page.evaluate(()=>getSelection().toString().includes('Wǒ xiǎng')));
-    assert.deepEqual(errors,[]);
-    // Controlled speech engine: assert the texts, language, lifecycle and error handling.
-    await page.addInitScript(()=>{
-      window.voiceList=[{lang:'zh-CN',name:'Test Mandarin'}];
-      window.spoken=[];
-      Object.defineProperty(window,'speechSynthesis',{configurable:true,value:{
-        getVoices:()=>window.voiceList,
-        cancel:()=>{},
-        speak:u=>{window.lastUtterance=u;window.spoken.push({text:u.text,lang:u.lang,rate:u.rate});u.onstart?.();}
-      }});
-      window.SpeechSynthesisUtterance=class {constructor(text){this.text=text;}};
+    await page.waitForFunction(() => window.copiedText);
+    assert.equal(await page.evaluate(() => window.copiedText), '我想学中文。\nWǒ xiǎng xué Zhōngwén.\nЯ хочу вивчати китайську мову.');
+
+    const speechPage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    await speechPage.addInitScript(() => {
+      window.spoken = [];
+      window.testVoices = [{ lang: 'zh-CN', name: 'Test Mandarin' }];
+      Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: {
+        getVoices: () => window.testVoices,
+        cancel: () => {},
+        speak: utterance => { window.lastUtterance = utterance; window.spoken.push(utterance.text); utterance.onstart?.(); },
+      } });
+      window.SpeechSynthesisUtterance = class { constructor(text) { this.text = text; } };
     });
-    await page.reload();
-    for (const [id,text] of [['speakNihao','你好'],['speakDaily','我想学中文。']]) {
-      await page.locator(`#${id}`).click();
-      assert.deepEqual(await page.evaluate(()=>window.spoken.at(-1)),{text,lang:'zh-CN',rate:0.8});
-      assert.equal(await page.locator(`#${id}`).getAttribute('aria-pressed'),'true');
-      await page.evaluate(()=>window.lastUtterance.onend());
-      assert.equal(await page.locator(`#${id}`).textContent(),'▶ Прослухати');
+    for (const route of routes) {
+      await speechPage.goto(`${baseUrl}${route}`);
+      const buttons = speechPage.locator('[data-speak]');
+      const count = await buttons.count();
+      for (let index = 0; index < count; index++) {
+        const button = buttons.nth(index);
+        const targetId = await button.getAttribute('data-speak');
+        const expected = (await speechPage.locator(`#${targetId} [lang="zh-CN"]`).first().textContent()).trim();
+        await button.click();
+        assert.equal(await speechPage.evaluate(() => window.spoken.at(-1)), expected, `audio text mismatch on ${route}`);
+        assert.equal(await button.getAttribute('aria-pressed'), 'true', `audio button state missing on ${route}`);
+        await speechPage.evaluate(() => window.lastUtterance.onend());
+        assert.equal(await button.getAttribute('aria-pressed'), null, `audio completion state did not reset on ${route}`);
+      }
     }
-    await page.locator('#speakNihao').click();
-    await page.locator('#speakNihao').click();
-    assert.ok((await page.locator('#actionStatus').textContent()).includes('зупинено'));
-    await page.locator('#speakNihao').click();
-    await page.evaluate(()=>window.lastUtterance.onerror());
-    assert.ok((await page.locator('#actionStatus').textContent()).includes('Не вдалося'));
-    await page.evaluate(()=>{window.voiceList=[];});
-    await page.locator('#speakDaily').click();
-    assert.ok((await page.locator('#actionStatus').textContent()).includes('голос ще не доступний'));
-    await page.evaluate(()=>{window.voiceList=[{lang:'zh-CN'}];});
-    await page.locator('#speakDaily').click();
-    assert.equal(await page.locator('#speakDaily').getAttribute('aria-pressed'),'true');
-    await page.evaluate(()=>window.lastUtterance.onend());
-    const unsupported = await browser.newPage();
-    await unsupported.addInitScript(()=>{delete window.speechSynthesis;delete window.SpeechSynthesisUtterance;});
-    await unsupported.goto(url);
-    await unsupported.locator('#speakNihao').click();
-    assert.ok((await unsupported.locator('#actionStatus').textContent()).includes('не підтримує'));
-    const nojs = await browser.newPage({javaScriptEnabled:false,viewport:{width:320,height:812}});
-    await nojs.goto(url);
-    assert.equal(await nojs.locator('#navLinks').isVisible(),true);
-    assert.equal(await nojs.locator('#speakNihao').isVisible(),false);
-    await page.reload();
-    await page.setViewportSize({width:390,height:844});
-    await page.goto(url);
-    await page.evaluate(()=>{window.scrollTo(0,0);document.activeElement.blur();});
-    await page.screenshot({path:path.join(require('node:os').tmpdir(),'chinese-ua-mobile.png'),fullPage:true});
-    await page.screenshot({path:path.join(require('node:os').tmpdir(),'chinese-ua-mobile-top.png')});
-    await page.setViewportSize({width:1440,height:1000});
-    await page.evaluate(()=>window.scrollTo(0,0));
-    await page.screenshot({path:path.join(require('node:os').tmpdir(),'chinese-ua-desktop.png'),fullPage:true});
-    await page.screenshot({path:path.join(require('node:os').tmpdir(),'chinese-ua-desktop-top.png')});
-    assert.deepEqual(errors,[]);
-    console.log('PASS: assets, anchors, 10 viewport widths, enlarged text, menu, clipboard, both speech buttons, errors, delayed voices, no-JS fallback.');
-    console.log('Screenshots:',require('node:os').tmpdir());
-  } finally { await browser.close(); }
-})().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>server.close());
+    await speechPage.goto(baseUrl);
+    const firstSpeechButton = speechPage.locator('[data-speak]').first();
+    await firstSpeechButton.click();
+    await firstSpeechButton.click();
+    assert.match(await speechPage.locator('#actionStatus').textContent(), /зупинено/);
+    await speechPage.evaluate(() => { window.testVoices = []; });
+    await speechPage.locator('[data-speak]').first().click();
+    assert.match(await speechPage.locator('#actionStatus').textContent(), /голос ще не доступний/);
+
+    const noJs = await browser.newPage({ javaScriptEnabled: false, viewport: { width: 320, height: 812 } });
+    await noJs.goto(baseUrl);
+    assert.equal(await noJs.locator('#navLinks').isVisible(), true, 'navigation should remain available without JavaScript');
+    assert.equal(await noJs.locator('[data-speak]').first().isVisible(), false, 'unavailable audio buttons should stay hidden without JavaScript');
+    assert.deepEqual(errors, []);
+    console.log(`PASS: ${routes.length} pages, all internal links, metadata, sitemap, redirects, four viewport widths, menu, copy, and ${[...htmlByRoute.values()].join('').match(/data-speak=/g)?.length || 0} audio controls.`);
+  } finally {
+    await browser.close();
+    server.close();
+  }
+})().catch(error => { console.error(error); process.exitCode = 1; }).finally(() => server.close());

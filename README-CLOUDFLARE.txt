@@ -1,13 +1,14 @@
 CHINESE-UA.PP.UA — CLOUDFLARE WORKERS
 
-Worker name: red-breeze-15ec
-Configuration: wrangler.jsonc (repository root)
-Static asset directory: ./public
+Worker: red-breeze-15ec
 Production branch: main
-No application build step or runtime dependencies are required.
+Wrangler configuration: wrangler.jsonc
+Static asset directory: ./public
 
-The public directory contains index.html, styles.css, script.js, and favicon.svg.
-Only that directory is published as static assets. Asset URLs remain unchanged.
-For automatic deployment, the GitHub repository must also be connected to the
-Worker in Cloudflare. This repository configuration does not create that connection.
-See README.md for local preview and browser verification.
+The repository contains a dependency-free static HTML generator. Run `npm run build`
+before committing content changes. Generated HTML, styles, scripts, sitemap, robots,
+and `_redirects` are stored under `public/`; Cloudflare publishes that directory
+without a server-side framework or runtime build step.
+
+GitHub must remain connected to the Worker for automatic production deployment.
+The repository configuration alone does not create or change that Cloudflare link.
