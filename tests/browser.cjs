@@ -124,6 +124,38 @@ const server = http.createServer((req, res) => {
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(baseUrl);
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    assert.equal(await page.locator('#learningTitle').textContent(), 'Ваше навчання');
+    assert.equal(await page.locator('[data-dashboard-prompt]').textContent(), 'Почніть свій перший урок');
+    assert.equal(await page.locator('[data-continue-learning]').getAttribute('href'), '/hsk/hsk1/lesson-1/');
+    await page.goto(`${baseUrl}/hsk/hsk1/lesson-1/`);
+    const completeLesson = page.locator('#completeLesson');
+    assert.equal(await completeLesson.isVisible(), true);
+    await completeLesson.click();
+    const savedProgress = await page.evaluate(() => JSON.parse(localStorage.getItem('chineseUaLearningProgressV1')));
+    assert.deepEqual(savedProgress.lessons[0].slug, 'lesson-1');
+    assert.equal(savedProgress.lessons[0].completed, true);
+    assert.ok(Number.isFinite(Date.parse(savedProgress.lessons[0].completedAt)), 'completion should save a timestamp');
+    await page.reload();
+    assert.equal(await page.locator('#completeLesson').getAttribute('aria-pressed'), 'true', 'completion should persist after reload');
+    await page.goto(`${baseUrl}/hsk/hsk1/`);
+    assert.equal(await page.locator('[data-progress-count]').textContent(), '1 / 5 уроків завершено');
+    assert.equal(await page.locator('[role="progressbar"]').getAttribute('aria-valuenow'), '1');
+    assert.equal(await page.locator('[data-progress-fill]').evaluate(element => element.style.width), '20%');
+    await page.goto(baseUrl);
+    assert.equal(await page.locator('[data-continue-learning]').getAttribute('href'), '/hsk/hsk1/lesson-2/');
+    assert.equal(await page.locator('[data-continue-learning]').textContent(), 'Продовжити навчання →');
+    assert.equal(await page.locator('[data-completed-total]').textContent(), '1');
+    assert.equal(await page.locator('[data-recent-lesson]').textContent(), 'Привітання та знайомство');
+    await page.goto(`${baseUrl}/hsk/hsk1/lesson-1/`);
+    await page.locator('#completeLesson').click();
+    assert.equal((await page.evaluate(() => JSON.parse(localStorage.getItem('chineseUaLearningProgressV1')))).lessons[0].completed, false, 'completion should be reversible');
+    await page.evaluate(() => localStorage.clear());
+    await page.goto(baseUrl);
+    assert.equal(await page.locator('[data-completed-total]').textContent(), '0', 'clearing browser data should reset progress');
+
+    await page.goto(baseUrl);
     await page.locator('#menuButton').click();
     assert.equal(await page.locator('#menuButton').getAttribute('aria-expanded'), 'true');
     await page.keyboard.press('Escape');

@@ -6,6 +6,81 @@ const navLinks = document.getElementById('navLinks');
 const status = document.getElementById('actionStatus');
 let statusTimer;
 
+const progressStorageKey = 'chineseUaLearningProgressV1';
+let courseLessons = [];
+try { courseLessons = JSON.parse(document.body.dataset.hskLessons || '[]'); } catch { courseLessons = []; }
+
+function readLearningProgress() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(progressStorageKey) || '{}');
+    return {
+      lessons: Array.isArray(saved.lessons) ? saved.lessons.filter(item => item && typeof item.slug === 'string') : [],
+      knownWords: Array.isArray(saved.knownWords) ? saved.knownWords : [],
+    };
+  } catch { return { lessons: [], knownWords: [] }; }
+}
+
+function saveLearningProgress(progress) {
+  try { localStorage.setItem(progressStorageKey, JSON.stringify(progress)); return true; }
+  catch { announce('Не вдалося зберегти прогрес у цьому браузері. Перевірте налаштування сховища.'); return false; }
+}
+
+function completedLessonMap(progress) {
+  return new Map(progress.lessons.filter(item => item.completed === true).map(item => [item.slug, item]));
+}
+
+function updateLearningProgress() {
+  const progress = readLearningProgress();
+  const completed = completedLessonMap(progress);
+  const count = courseLessons.filter(lesson => completed.has(lesson.slug)).length;
+  const progressCount = document.querySelector('[data-progress-count]');
+  const progressBar = document.querySelector('[role="progressbar"][aria-label="Прогрес курсу HSK 1"]');
+  const progressFill = document.querySelector('[data-progress-fill]');
+  if (progressCount) progressCount.textContent = `${count} / ${courseLessons.length} уроків завершено`;
+  if (progressBar) progressBar.setAttribute('aria-valuenow', String(count));
+  if (progressFill) progressFill.style.width = `${courseLessons.length ? count / courseLessons.length * 100 : 0}%`;
+
+  const completeButton = document.getElementById('completeLesson');
+  if (completeButton) {
+    const isComplete = completed.has(completeButton.dataset.lessonSlug);
+    completeButton.hidden = false;
+    completeButton.setAttribute('aria-pressed', String(isComplete));
+    completeButton.textContent = isComplete ? 'Урок завершено ✓' : 'Позначити урок як завершений';
+  }
+
+  const continueLink = document.querySelector('[data-continue-learning]');
+  if (continueLink) {
+    const nextLesson = courseLessons.find(lesson => !completed.has(lesson.slug));
+    const latest = [...completed.values()].sort((a, b) => Date.parse(b.completedAt || 0) - Date.parse(a.completedAt || 0))[0];
+    const prompt = document.querySelector('[data-dashboard-prompt]');
+    const completedTotal = document.querySelector('[data-completed-total]');
+    const knownTotal = document.querySelector('[data-known-total]');
+    const recent = document.querySelector('[data-recent-lesson]');
+    continueLink.href = nextLesson?.route || '/hsk/hsk1/';
+    continueLink.textContent = count ? (nextLesson ? 'Продовжити навчання →' : 'Повторити курс HSK 1 →') : 'Почніть свій перший урок →';
+    if (count) continueLink.setAttribute('aria-label', nextLesson ? `Продовжити навчання: ${nextLesson.title}` : 'Повторити курс HSK 1');
+    if (prompt) prompt.textContent = count ? 'Продовжуйте з наступного уроку HSK 1' : 'Почніть свій перший урок';
+    if (completedTotal) completedTotal.textContent = String(count);
+    if (knownTotal) knownTotal.textContent = String(progress.knownWords.length);
+    if (recent) recent.textContent = latest ? (courseLessons.find(lesson => lesson.slug === latest.slug)?.title || latest.slug) : 'Ще немає';
+  }
+}
+
+const completeLessonButton = document.getElementById('completeLesson');
+if (completeLessonButton) completeLessonButton.addEventListener('click', () => {
+  const progress = readLearningProgress();
+  const slug = completeLessonButton.dataset.lessonSlug;
+  const oldRecord = progress.lessons.find(item => item.slug === slug);
+  const complete = oldRecord?.completed !== true;
+  const record = { slug, completed: complete, completedAt: complete ? new Date().toISOString() : null };
+  progress.lessons = [...progress.lessons.filter(item => item.slug !== slug), record];
+  if (saveLearningProgress(progress)) {
+    updateLearningProgress();
+    announce(complete ? 'Урок позначено як завершений. Прогрес збережено на цьому пристрої.' : 'Урок знову позначено як незавершений.');
+  }
+});
+updateLearningProgress();
+
 function announce(message) {
   if (!status) return;
   clearTimeout(statusTimer);
