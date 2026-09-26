@@ -1,0 +1,146 @@
+{
+  "tool": "built-in image_gen",
+  "scope": "Concrete objects and people only; abstract words and numbers have no images.",
+  "assets": [
+    {
+      "category": "food",
+      "name": "water",
+      "hanzi": "水",
+      "alt": "Склянка води",
+      "prompt": "Use case: illustration-story. Asset type: square vocabulary flashcard illustration for a Chinese language learning website. Primary request: one clear drinking glass filled with fresh still water, water visible through transparent glass. Style: polished simple editorial illustration, soft rounded forms, subtle paper texture, restrained shading, warm off-white background #faf8f4, gentle ground shadow, limited natural colors with muted blue accents. Composition: centered single object, generous 15 percent margin, fully visible, immediately recognizable at thumbnail size. No lettering, no numbers, no symbols, no logos, no watermark, no borders. Output one square image."
+    },
+    {
+      "category": "food",
+      "name": "tea",
+      "hanzi": "茶",
+      "alt": "Чашка чаю",
+      "prompt": "Use case: illustration-story. Asset type: square vocabulary flashcard for Chinese language learners. Style: refined simple editorial watercolor illustration, soft rounded forms, subtle paper grain, restrained shading, warm off-white background #faf8f4, muted blue, terracotta and natural colors, gentle ground shadow. Composition: centered subject with generous margins, fully visible and legible at thumbnail size. No text, letters, numbers, captions, logos, watermarks or borders. One square image. Primary subject: a small pale ceramic Chinese teacup filled with amber tea and a matching small teapot, delicate steam, unmistakably tea"
+    },
+    {
+      "category": "food",
+      "name": "rice",
+      "hanzi": "米饭",
+      "alt": "Миска вареного рису",
+      "prompt": "Use case: illustration-story. Asset type: square vocabulary flashcard for Chinese language learners. Style: refined simple editorial watercolor illustration, soft rounded forms, subtle paper grain, restrained shading, warm off-white background #faf8f4, muted blue, terracotta and natural colors, gentle ground shadow. Composition: centered subject with generous margins, fully visible and legible at thumbnail size. No text, letters, numbers, captions, logos, watermarks or borders. One square image. Primary subject: a pale ceramic bowl filled with fluffy cooked white rice, distinct grains, no other food"
+    },
+    {
+      "category": "food",
+      "name": "apple",
+      "hanzi": "苹果",
+      "alt": "Червоне яблуко",
+      "prompt": "Use case: illustration-story. Asset type: square vocabulary flashcard for Chinese language learners. Style: refined simple editorial watercolor illustration, soft rounded forms, subtle paper grain, restrained shading, warm off-white background #faf8f4, muted blue, terracotta and natural colors, gentle ground shadow. Composition: centered subject with generous margins, fully visible and legible at thumbnail size. No text, letters, numbers, captions, logos, watermarks or borders. One square image. Primary subject: one fresh red apple with a short brown stem and one small green leaf"
+    },
+    {
+      "category": "food",
+      "name": "chicken",
+      "hanzi": "鸡肉",
+      "alt": "Приготоване куряче м’ясо на тарілці",
+      "prompt": "Use case: illustration-story. Asset type: square vocabulary flashcard for Chinese language learners. Style: refined simple editorial watercolor illustration, soft rounded forms, subtle paper grain, restrained shading, warm off-white background #faf8f4, muted blue, terracotta and natural colors, gentle ground shadow. Composition: centered subject with generous margins, fully visible and legible at thumbnail size. No text, letters, numbers, captions, logos, watermarks or borders. One square image. Primary subject: cooked chicken meat: two golden roasted chicken drumsticks on a simple white plate, appetizing, no live birds"
+    },
+    {
+      "category": "transport",
+      "name": "car",
+      "hanzi": "车",
+      "alt": "Легковий автомобіль",
+      "prompt": "Use case: illustration-story. Asset type: square vocabulary flashcard for Chinese language learners. Style: refined simple editorial watercolor illustration, soft rounded forms, subtle paper grain, restrained shading, warm off-white background #faf8f4, muted blue, terracotta and natural colors, gentle ground shadow. Composition: centered subject with generous margins, fully visible and legible at thumbnail size. No text, letters, numbers, captions, logos, watermarks or borders. One square image. Primary subject: one small muted blue passenger car, three-quarter front view, no visible license characters"
+    },
+    {
+      "category": "transport",
+      "name": "subway",
+      "hanzi": "地铁",
+      "alt": "Потяг метро біля підземної платформи",
+      "prompt": "Use case: illustration-story. Asset type: square vocabulary flashcard for Chinese language learners. Style: refined simple editorial watercolor illustration, soft rounded forms, subtle paper grain, restrained shading, warm off-white background #faf8f4, muted blue, terracotta and natural colors, gentle ground shadow. Composition: centered subject with generous margins, fully visible and legible at thumbnail size. No text, letters, numbers, captions, logos, watermarks or borders. One square image. Primary subject: modern subway train stopped beside a clean underground platform, visible tunnel arch and platform edge, clear distinction from outdoor railway, no signs"
+    },
+    {
+      "category": "transport",
+      "name": "train",
+      "hanzi": "火车",
+      "alt": "Пасажирський потяг на залізничній колії",
+      "prompt": "Use case: illustration-story. Asset type: square vocabulary flashcard for Chinese language learners. Style: refined simple editorial watercolor illustration, soft rounded forms, subtle paper grain, restrained shading, warm off-white background #faf8f4, muted blue, terracotta and natural colors, gentle ground shadow. Composition: centered subject with generous margins, fully visible and legible at thumbnail size. No text, letters, numbers, captions, logos, watermarks or borders. One square image. Primary subject: an intercity passenger train travelling on outdoor railway tracks with grassy verge, three-quarter view, blue and cream carriages, no urban underground station"
+    },
+    {
+      "category": "transport",
+      "name": "airplane",
+      "hanzi": "飞机",
+      "alt": "Пасажирський літак",
+      "prompt": "Use case: illustration-story. Asset type: square vocabulary flashcard for Chinese language learners. Style: refined simple editorial watercolor illustration, soft rounded forms, subtle paper grain, restrained shading, warm off-white background #faf8f4, muted blue, terracotta and natural colors, gentle ground shadow. Composition: centered subject with generous margins, fully visible and legible at thumbnail size. No text, letters, numbers, captions, logos, watermarks or borders. One square image. Primary subject: one white and blue passenger airplane viewed from three-quarter angle in a pale sky with two subtle clouds, full wings visible"
+    },
+    {
+      "category": "family",
+      "name": "family",
+      "hanzi": "家",
+      "alt": "Родина разом біля дому",
+      "prompt": "Use case: illustration-story. Asset type: square vocabulary flashcard for Chinese language learners. Style: refined simple editorial watercolor illustration, soft rounded forms, subtle paper grain, restrained shading, warm off-white background #faf8f4, muted blue, terracotta and natural colors, gentle ground shadow. Composition: centered subject with generous margins, fully visible and legible at thumbnail size. No text, letters, numbers, captions, logos, watermarks or borders. One square image. Primary subject: a warm family of two parents and two children standing together in front of a small cozy home, affectionate natural poses, full figures"
+    },
+    {
+      "category": "family",
+      "name": "father",
+      "hanzi": "爸爸",
+      "alt": "Тато разом із дитиною",
+      "prompt": "Use case: illustration-story. Asset type: square vocabulary flashcard for Chinese language learners. Style: refined simple editorial watercolor illustration, soft rounded forms, subtle paper grain, restrained shading, warm off-white background #faf8f4, muted blue, terracotta and natural colors, gentle ground shadow. Composition: centered subject with generous margins, fully visible and legible at thumbnail size. No text, letters, numbers, captions, logos, watermarks or borders. One square image. Primary subject: a father with short dark hair wearing a muted blue shirt, holding his little child's hand, father is prominent central subject, warm smile"
+    },
+    {
+      "category": "family",
+      "name": "mother",
+      "hanzi": "妈妈",
+      "alt": "Мама разом із дитиною",
+      "prompt": "Use case: illustration-story. Asset type: square vocabulary flashcard for Chinese language learners. Style: refined simple editorial watercolor illustration, soft rounded forms, subtle paper grain, restrained shading, warm off-white background #faf8f4, muted blue, terracotta and natural colors, gentle ground shadow. Composition: centered subject with generous margins, fully visible and legible at thumbnail size. No text, letters, numbers, captions, logos, watermarks or borders. One square image. Primary subject: a mother with shoulder-length dark hair wearing a terracotta cardigan, holding her little child's hand, mother is prominent central subject, warm smile"
+    },
+    {
+      "category": "family",
+      "name": "older-brother",
+      "hanzi": "哥哥",
+      "alt": "Старший брат поруч із молодшим хлопчиком",
+      "prompt": "Use case: illustration-story. Asset type: square vocabulary flashcard for Chinese language learners. Style: refined simple editorial watercolor illustration, soft rounded forms, subtle paper grain, restrained shading, warm off-white background #faf8f4, muted blue, terracotta and natural colors, gentle ground shadow. Composition: centered subject with generous margins, fully visible and legible at thumbnail size. No text, letters, numbers, captions, logos, watermarks or borders. One square image. Primary subject: a teenage older brother taller and more prominent on the left, standing beside his much younger little brother on the right, natural sibling warmth, older brother wears blue"
+    },
+    {
+      "category": "family",
+      "name": "older-sister",
+      "hanzi": "姐姐",
+      "alt": "Старша сестра поруч із молодшим хлопчиком",
+      "prompt": "Use case: illustration-story. Asset type: square vocabulary flashcard for Chinese language learners. Style: refined simple editorial watercolor illustration, soft rounded forms, subtle paper grain, restrained shading, warm off-white background #faf8f4, muted blue, terracotta and natural colors, gentle ground shadow. Composition: centered subject with generous margins, fully visible and legible at thumbnail size. No text, letters, numbers, captions, logos, watermarks or borders. One square image. Primary subject: a teenage older sister taller and more prominent on the left, standing beside her much younger little brother on the right, natural sibling warmth, older sister wears terracotta"
+    },
+    {
+      "category": "family",
+      "name": "younger-brother",
+      "hanzi": "弟弟",
+      "alt": "Молодший брат попереду старшої сестри",
+      "prompt": "Use case: illustration-story. Asset type: square vocabulary flashcard for Chinese language learners. Style: refined simple editorial watercolor illustration, soft rounded forms, subtle paper grain, restrained shading, warm off-white background #faf8f4, muted blue, terracotta and natural colors, gentle ground shadow. Composition: centered subject with generous margins, fully visible and legible at thumbnail size. No text, letters, numbers, captions, logos, watermarks or borders. One square image. Primary subject: a young boy aged six clearly prominent in foreground center, his taller teenage older sister slightly behind and to the side, focus on little brother smiling and holding small toy car"
+    },
+    {
+      "category": "work",
+      "name": "company",
+      "hanzi": "公司",
+      "alt": "Офісна будівля компанії",
+      "prompt": "Use case: illustration-story. Asset type: square vocabulary flashcard for Chinese language learners. Style: refined simple editorial watercolor illustration, soft rounded forms, subtle paper grain, restrained shading, warm off-white background #faf8f4, muted blue, terracotta and natural colors, gentle ground shadow. Composition: centered subject with generous margins, fully visible and legible at thumbnail size. No text, letters, numbers, captions, logos, watermarks or borders. One square image. Primary subject: one contemporary modest office building with large blue windows and clear glass entrance, two small landscaping plants, no signage, isolated architectural illustration"
+    },
+    {
+      "category": "work",
+      "name": "colleagues",
+      "hanzi": "同事",
+      "alt": "Двоє колег спільно працюють за столом",
+      "prompt": "Use case: illustration-story. Asset type: square vocabulary flashcard for Chinese language learners. Style: refined simple editorial watercolor illustration, soft rounded forms, subtle paper grain, restrained shading, warm off-white background #faf8f4, muted blue, terracotta and natural colors, gentle ground shadow. Composition: centered subject with generous margins, fully visible and legible at thumbnail size. No text, letters, numbers, captions, logos, watermarks or borders. One square image. Primary subject: two adult coworkers a man and woman collaborating at an office desk, shared laptop, friendly professional natural posture, simple scene"
+    },
+    {
+      "category": "work",
+      "name": "student",
+      "hanzi": "学生",
+      "alt": "Студент із рюкзаком і книжкою",
+      "prompt": "Use case: illustration-story. Asset type: square vocabulary flashcard for Chinese language learners. Style: refined simple editorial watercolor illustration, soft rounded forms, subtle paper grain, restrained shading, warm off-white background #faf8f4, muted blue, terracotta and natural colors, gentle ground shadow. Composition: centered subject with generous margins, fully visible and legible at thumbnail size. No text, letters, numbers, captions, logos, watermarks or borders. One square image. Primary subject: one young adult university student wearing backpack and holding a closed book, casual sweater and trousers, full figure"
+    },
+    {
+      "category": "work",
+      "name": "school",
+      "hanzi": "学校",
+      "alt": "Шкільна будівля з подвір’ям",
+      "prompt": "Use case: illustration-story. Asset type: square vocabulary flashcard for Chinese language learners. Style: refined simple editorial watercolor illustration, soft rounded forms, subtle paper grain, restrained shading, warm off-white background #faf8f4, muted blue, terracotta and natural colors, gentle ground shadow. Composition: centered subject with generous margins, fully visible and legible at thumbnail size. No text, letters, numbers, captions, logos, watermarks or borders. One square image. Primary subject: a welcoming two-story school building with simple central entrance and small schoolyard, a backpack and books subtly beside foreground bench, no letters or flags"
+    },
+    {
+      "category": "work",
+      "name": "teacher",
+      "hanzi": "老师",
+      "alt": "Викладачка пояснює матеріал біля дошки",
+      "prompt": "Use case: illustration-story. Asset type: square vocabulary flashcard for Chinese language learners. Style: refined simple editorial watercolor illustration, soft rounded forms, subtle paper grain, restrained shading, warm off-white background #faf8f4, muted blue, terracotta and natural colors, gentle ground shadow. Composition: centered subject with generous margins, fully visible and legible at thumbnail size. No text, letters, numbers, captions, logos, watermarks or borders. One square image. Primary subject: one adult female teacher holding an open book beside a small classroom board with simple geometric shapes only, natural teaching gesture, no writing"
+    }
+  ]
+}

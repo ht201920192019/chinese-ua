@@ -108,9 +108,32 @@ function cards(items, columns = 'three') {
     : `<article class="hub-card planned-card"><span class="hub-card-icon" aria-hidden="true">✦</span><h2>${esc(item.title)}</h2><p>${esc(item.text)}</p><span class="planned-label">Матеріал готується</span></article>`).join('')}</div>`;
 }
 
-function wordCard(item, id, showExample = true) {
+function wordCard(item, id, showExample = true, showImage = false) {
   const example = showExample && item.example ? `<div class="word-example"><span class="example-label">Приклад</span><b lang="zh-CN">${esc(item.example)}</b><span class="reading" lang="zh-Latn">${esc(item.examplePinyin)}</span><span>${esc(item.exampleUk)}</span></div>` : '';
-  return `<article class="word-card learning-item" id="${esc(id)}"><b lang="zh-CN">${esc(item.hanzi)}</b><span class="reading" lang="zh-Latn">${esc(item.pinyin)}</span><span>${esc(item.uk)}</span><button type="button" class="audio-button" data-speak="${esc(id)}" hidden>▶ Прослухати</button>${example}</article>`;
+  const image = showImage && item.image ? `<span class="vocabulary-image-frame"><img src="${esc(item.image)}" alt="${esc(item.imageAlt || '')}" loading="lazy" decoding="async" data-vocabulary-image></span>` : '';
+  return `<article class="word-card learning-item" id="${esc(id)}">${image}<b lang="zh-CN">${esc(item.hanzi)}</b><span class="reading" lang="zh-Latn">${esc(item.pinyin)}</span><span>${esc(item.uk)}</span><button type="button" class="audio-button" data-speak="${esc(id)}" hidden>▶ Прослухати</button>${example}</article>`;
+}
+
+function validateVocabularyImages(groups = vocabulary, publicDir = output) {
+  const publicRoot = path.resolve(publicDir);
+  const vocabularyRoot = path.resolve(publicRoot, 'images', 'vocabulary');
+  for (const group of groups) for (const item of group.words) {
+    if (!item.image) continue;
+    if (typeof item.image !== 'string' || !item.image.startsWith('/images/vocabulary/')) {
+      throw new Error(`Vocabulary image for “${item.hanzi}” must use /images/vocabulary/: ${item.image}`);
+    }
+    if (!['.webp', '.avif'].includes(path.extname(item.image).toLowerCase())) {
+      throw new Error(`Vocabulary image for “${item.hanzi}” must use WebP (or AVIF): ${item.image}`);
+    }
+    if (typeof item.imageAlt !== 'string' || !item.imageAlt.trim()) {
+      throw new Error(`Vocabulary image for “${item.hanzi}” needs a descriptive imageAlt.`);
+    }
+    const imagePath = path.resolve(publicRoot, `.${item.image}`);
+    if (!imagePath.startsWith(`${vocabularyRoot}${path.sep}`)) throw new Error(`Vocabulary image path escapes public/images/vocabulary/: ${item.image}`);
+    if (!fs.existsSync(imagePath) || !fs.statSync(imagePath).isFile()) {
+      throw new Error(`Vocabulary image for “${item.hanzi}” does not exist: public/${item.image.slice(1)}`);
+    }
+  }
 }
 
 function renderHub(page, route) {
@@ -159,7 +182,7 @@ function renderVocabulary(group) {
   const page = pageByRoute.get(route);
   const intro = pageIntro(page, route, 'Словник за темою');
   const section = { id: 'word-list', title: 'Слова й приклади' };
-  const cardsHtml = `<section id="word-list" class="article-section"><h2>Слова й приклади</h2><div class="cards three vocabulary-grid">${group.words.map((item, index) => wordCard(item, `vocab-${group.slug}-${index + 1}`)).join('')}</div></section>`;
+  const cardsHtml = `<section id="word-list" class="article-section"><h2>Слова й приклади</h2><div class="cards three vocabulary-grid">${group.words.map((item, index) => wordCard(item, `vocab-${group.slug}-${index + 1}`, true, true)).join('')}</div></section>`;
   const related = `<nav class="lesson-next lesson-pager" aria-label="Пов’язані матеріали"><a href="/vocabulary/"><span>Усі теми</span>← До словника</a><a href="/dialogues/${group.slug === 'greetings' ? 'introduction' : group.slug === 'food' ? 'restaurant' : group.slug === 'transport' ? 'transport' : group.slug === 'numbers' ? 'shopping' : 'university'}/"><span>Практика</span>Перейти до діалогу →</a></nav>`;
   return shell(page, route, `<div class="container article-layout">${intro}${toc([section])}${cardsHtml}${related}</div>`);
 }
@@ -262,6 +285,7 @@ for (const item of dialogues) addPage(`dialogues/${item.slug}/`, item.title, `${
 for (const lesson of hskLessons) addPage(`hsk/hsk1/${lesson.slug}/`, `Урок ${hskLessons.indexOf(lesson) + 1}: ${lesson.title}`, `${lesson.goal} Слова, граматика, діалог і вправи українською.`, lesson.goal);
 
 function build() {
+  validateVocabularyImages();
   const pages = [];
   pages.push({ route: '/', render: renderHome });
   for (const hub of hubs) pages.push({ route: hub.route, render: () => renderHub(hub, hub.route) });
@@ -293,5 +317,5 @@ function build() {
   console.log(`Generated ${pages.length} HTML pages in public/.`);
 }
 
-module.exports = { build };
+module.exports = { build, validateVocabularyImages, wordCard, renderVocabulary };
 if (require.main === module) build();

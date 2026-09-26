@@ -7,6 +7,13 @@ const status = document.getElementById('actionStatus');
 let statusTimer;
 
 const progressStorageKey = 'chineseUaLearningProgressV1';
+document.addEventListener('error', event => {
+  const image = event.target;
+  if (image instanceof HTMLImageElement && image.matches('[data-vocabulary-image]')) {
+    image.closest('.vocabulary-image-frame, .flashcard-image-frame')?.remove();
+  }
+}, true);
+
 let courseLessons = [];
 try { courseLessons = JSON.parse(document.body.dataset.hskLessons || '[]'); } catch { courseLessons = []; }
 
@@ -454,8 +461,6 @@ function initializeFlashcards(app) {
       </div>
     </article>`;
     const front = cardShell.querySelector('[data-flashcard-front]');
-    const vocabularyImage = cardShell.querySelector('[data-vocabulary-image]');
-    if (vocabularyImage) vocabularyImage.addEventListener('error', () => vocabularyImage.closest('.flashcard-image-frame')?.remove(), { once: true });
     front.addEventListener('click', () => { showFace(true); cardShell.querySelector('[data-flip-back]').focus({ preventScroll: true }); });
     cardShell.querySelector('[data-flip-back]').addEventListener('click', () => { showFace(false); front.focus({ preventScroll: true }); });
     cardShell.querySelector('[data-flashcard-back]').addEventListener('click', event => {

@@ -1,0 +1,82 @@
+{
+  "水": {
+    "image": "/images/vocabulary/food/water.webp",
+    "imageAlt": "Склянка води"
+  },
+  "茶": {
+    "image": "/images/vocabulary/food/tea.webp",
+    "imageAlt": "Чашка чаю"
+  },
+  "米饭": {
+    "image": "/images/vocabulary/food/rice.webp",
+    "imageAlt": "Миска вареного рису"
+  },
+  "苹果": {
+    "image": "/images/vocabulary/food/apple.webp",
+    "imageAlt": "Червоне яблуко"
+  },
+  "鸡肉": {
+    "image": "/images/vocabulary/food/chicken.webp",
+    "imageAlt": "Приготоване куряче м’ясо на тарілці"
+  },
+  "车": {
+    "image": "/images/vocabulary/transport/car.webp",
+    "imageAlt": "Легковий автомобіль"
+  },
+  "地铁": {
+    "image": "/images/vocabulary/transport/subway.webp",
+    "imageAlt": "Потяг метро біля підземної платформи"
+  },
+  "火车": {
+    "image": "/images/vocabulary/transport/train.webp",
+    "imageAlt": "Пасажирський потяг на залізничній колії"
+  },
+  "飞机": {
+    "image": "/images/vocabulary/transport/airplane.webp",
+    "imageAlt": "Пасажирський літак"
+  },
+  "家": {
+    "image": "/images/vocabulary/family/family.webp",
+    "imageAlt": "Родина разом біля дому"
+  },
+  "爸爸": {
+    "image": "/images/vocabulary/family/father.webp",
+    "imageAlt": "Тато разом із дитиною"
+  },
+  "妈妈": {
+    "image": "/images/vocabulary/family/mother.webp",
+    "imageAlt": "Мама разом із дитиною"
+  },
+  "哥哥": {
+    "image": "/images/vocabulary/family/older-brother.webp",
+    "imageAlt": "Старший брат поруч із молодшим хлопчиком"
+  },
+  "姐姐": {
+    "image": "/images/vocabulary/family/older-sister.webp",
+    "imageAlt": "Старша сестра поруч із молодшим хлопчиком"
+  },
+  "弟弟": {
+    "image": "/images/vocabulary/family/younger-brother.webp",
+    "imageAlt": "Молодший брат попереду старшої сестри"
+  },
+  "公司": {
+    "image": "/images/vocabulary/work/company.webp",
+    "imageAlt": "Офісна будівля компанії"
+  },
+  "同事": {
+    "image": "/images/vocabulary/work/colleagues.webp",
+    "imageAlt": "Двоє колег спільно працюють за столом"
+  },
+  "学生": {
+    "image": "/images/vocabulary/work/student.webp",
+    "imageAlt": "Студент із рюкзаком і книжкою"
+  },
+  "学校": {
+    "image": "/images/vocabulary/work/school.webp",
+    "imageAlt": "Шкільна будівля з подвір’ям"
+  },
+  "老师": {
+    "image": "/images/vocabulary/work/teacher.webp",
+    "imageAlt": "Викладачка пояснює матеріал біля дошки"
+  }
+}
