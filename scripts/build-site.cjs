@@ -60,11 +60,19 @@ function head(page, route) {
   const description = page.description || `${page.title} — урок китайської мови українською з Pinyin, прикладами та практикою. Chinese UA.`;
   const title = page.metaTitle || `${page.title} | Chinese UA`;
   const robotsMeta = page.robots ? `<meta name="robots" content="${esc(page.robots)}" />` : page.noindex ? '<meta name="robots" content="noindex,follow" />' : '';
+  const socialImagePath = path.join(output, 'images', 'social', 'chinese-ua-social.webp');
+  const socialImage = fs.existsSync(socialImagePath) ? `${domain}/images/social/chinese-ua-social.webp` : '';
   const crumbItems = route === '/' ? [] : [['Головна', '/'], ...route.split('/').filter(Boolean).map((part, index, parts) => {
     const current = `${parts.slice(0, index + 1).join('/')}/`;
     return [pageByRoute.get(current)?.title || part, current];
   })];
   const breadcrumbSchema = crumbItems.length ? `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: crumbItems.map(([name, item], index) => ({ '@type': 'ListItem', position: index + 1, name, item: urlFor(item) })) })}</script>` : '';
+  const websiteSchema = route === '/' ? `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'WebSite', name: 'Chinese UA', url: `${domain}/`, inLanguage: 'uk' })}</script>` : '';
+  const lesson = route.match(/^hsk\/hsk1\/(lesson-[^/]+)\/$/) && hskLessons.find(item => item.slug === route.match(/^hsk\/hsk1\/(lesson-[^/]+)\/$/)[1]);
+  const learningSchema = lesson ? `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'LearningResource', name: page.title, description, url: canonical, inLanguage: 'uk', learningResourceType: 'Lesson', educationalLevel: 'Beginner', teaches: lesson.goal, isPartOf: { '@type': 'Course', name: 'HSK 1: курс китайської для початківців', url: urlFor('hsk/hsk1/') } })}</script>` : '';
+  const socialMeta = socialImage
+    ? `<meta property="og:image" content="${socialImage}" />\n  <meta name="twitter:card" content="summary_large_image" />\n  <meta name="twitter:title" content="${esc(title)}" />\n  <meta name="twitter:description" content="${esc(description)}" />\n  <meta name="twitter:image" content="${socialImage}" />`
+    : `<meta name="twitter:card" content="summary" />\n  <meta name="twitter:title" content="${esc(title)}" />\n  <meta name="twitter:description" content="${esc(description)}" />`;
   return `<head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -78,9 +86,13 @@ function head(page, route) {
   <meta property="og:title" content="${esc(title)}" />
   <meta property="og:description" content="${esc(description)}" />
   <meta property="og:url" content="${canonical}" />
+  ${page.noindex || page.robots ? '' : socialImage ? `<meta property="og:image" content="${socialImage}" />` : ''}
+  ${page.noindex || page.robots ? '' : socialMeta}
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="/styles.css" />
   ${breadcrumbSchema}
+  ${websiteSchema}
+  ${learningSchema}
 </head>`;
 }
 

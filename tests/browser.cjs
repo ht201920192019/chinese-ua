@@ -146,9 +146,33 @@ const server = http.createServer((req, res) => {
       assert.ok((await page.locator('meta[name="description"]').getAttribute('content'))?.length > 50, `${route} should have a useful meta description`);
       assert.equal(await page.locator('link[rel="canonical"]').getAttribute('href'), `${domain}${route}`);
       for (const property of ['og:title', 'og:description', 'og:url']) assert.ok(await page.locator(`meta[property="${property}"]`).count(), `${route} is missing ${property}`);
+      if (!['/china/'].includes(route)) {
+        assert.ok(await page.locator('meta[name="twitter:title"]').count(), `${route} should expose a Twitter title`);
+        assert.ok(await page.locator('meta[name="twitter:description"]').count(), `${route} should expose a Twitter description`);
+        const hasSocialImage = fs.existsSync(path.join(root, 'images', 'social', 'chinese-ua-social.webp'));
+        if (hasSocialImage) {
+          assert.equal(await page.locator('meta[name="twitter:card"]').getAttribute('content'), 'summary_large_image');
+          assert.equal(await page.locator('meta[name="twitter:image"]').getAttribute('content'), `${domain}/images/social/chinese-ua-social.webp`);
+          assert.equal(await page.locator('meta[property="og:image"]').getAttribute('content'), `${domain}/images/social/chinese-ua-social.webp`);
+        } else {
+          assert.equal(await page.locator('meta[name="twitter:card"]').getAttribute('content'), 'summary', 'do not claim a large social preview without an image asset');
+          assert.equal(await page.locator('meta[name="twitter:image"]').count(), 0);
+          assert.equal(await page.locator('meta[property="og:image"]').count(), 0);
+        }
+      }
       assert.ok(await page.locator('header.site-header').count());
       assert.ok(await page.locator('footer.site-footer').count());
       if (route === '/characters/') assert.equal(await page.locator('#basic-characters .word-card').count(), 50);
+      if (route === '/') {
+        const schemas = await page.locator('script[type="application/ld+json"]').allTextContents();
+        assert.ok(schemas.some(schema => JSON.parse(schema)['@type'] === 'WebSite'), 'homepage should expose WebSite JSON-LD');
+        assert.ok(!schemas.some(schema => JSON.stringify(JSON.parse(schema)).includes('SearchAction')), 'WebSite should not claim a search action before site search exists');
+      }
+      if (route.startsWith('/hsk/hsk1/lesson-')) {
+        const schemas = await page.locator('script[type="application/ld+json"]').allTextContents();
+        assert.ok(schemas.some(schema => JSON.parse(schema)['@type'] === 'LearningResource'), `${route} should expose LearningResource JSON-LD`);
+        assert.ok(schemas.some(schema => JSON.parse(schema)['@type'] === 'BreadcrumbList'), `${route} should retain BreadcrumbList JSON-LD`);
+      }
       if (route === '/hsk/hsk1/') assert.equal(await page.locator('.hub-cards .hub-card').count(), 5);
       if (route === '/tools/flashcards/') {
         assert.equal(await page.title(), 'Картки китайських слів українською | Chinese UA');
