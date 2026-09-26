@@ -901,6 +901,30 @@ a:focus-visible, button:focus-visible, summary:focus-visible {
   }
 }
 
+.site-search-form {
+  margin: 1.5rem 0 1rem;
+  padding: clamp(1rem, 4vw, 1.5rem);
+  border: 1px solid var(--line, #dbe3ea);
+  border-radius: 1rem;
+  background: var(--surface, #fff);
+}
+.site-search-form > label { display: block; margin-bottom: .55rem; font-weight: 700; }
+.site-search-controls { display: flex; gap: .65rem; }
+.site-search-controls input { min-width: 0; flex: 1; padding: .8rem .9rem; border: 1px solid #aab8c5; border-radius: .65rem; font: inherit; }
+.site-search-form p { margin: .55rem 0 0; color: var(--muted, #526170); font-size: .92rem; }
+.search-status { min-height: 1.5em; color: var(--muted, #526170); }
+.search-results { display: grid; gap: .8rem; }
+.search-result { padding: 1rem 1.1rem; border: 1px solid var(--line, #dbe3ea); border-radius: .85rem; background: var(--surface, #fff); }
+.search-result h2 { margin: .25rem 0; font-size: 1.15rem; }
+.search-result p { margin: .35rem 0; }
+.search-result-type { color: var(--accent, #346b5a); font-size: .83rem; font-weight: 700; }
+.search-result-language { display: flex; flex-wrap: wrap; gap: .35rem 1rem; }
+.search-result-language b { font-size: 1.15rem; }
+@media (max-width: 560px) {
+  .site-search-controls { align-items: stretch; flex-direction: column; }
+  .site-search-controls .button { width: 100%; }
+}
+
 /* Focused lessons use the same typography and colors as the home page. */
 .article-page {
   background: linear-gradient(180deg, #fff7f7 0, #fff 330px);

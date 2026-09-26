@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
-const { validateVocabularyImages, wordCard, renderVocabulary, flashcardWords } = require('../scripts/build-site.cjs');
+const { validateVocabularyImages, wordCard, renderVocabulary, flashcardWords, searchIndex } = require('../scripts/build-site.cjs');
 const { vocabulary } = require('../src/site-data.cjs');
 
 const root = path.resolve(__dirname, '..', 'public');
@@ -30,6 +30,10 @@ for (const group of vocabulary) for (const item of group.words) if (item.image) 
 const builtVocabularyPath = path.join(root, 'data', 'vocabulary.json');
 assert.ok(fs.existsSync(builtVocabularyPath), 'build should generate the vocabulary JSON data file');
 assert.deepEqual(JSON.parse(fs.readFileSync(builtVocabularyPath, 'utf8')), flashcardWords(), 'generated vocabulary data should come from site-data');
+const builtSearchIndexPath = path.join(root, 'search-index.json');
+assert.ok(fs.existsSync(builtSearchIndexPath), 'build should generate the site search index');
+assert.deepEqual(JSON.parse(fs.readFileSync(builtSearchIndexPath, 'utf8')), searchIndex(), 'search index should be generated from source content');
+assert.ok(JSON.parse(fs.readFileSync(builtSearchIndexPath, 'utf8')).every(item => ['lesson', 'vocabulary', 'grammar', 'dialogue', 'article'].includes(item.type)), 'search items should use supported content types');
 for (const group of vocabulary) for (const item of group.words) if (item.image) {
   assert.ok(item.imageAlt?.trim(), `${item.hanzi} image needs a useful alt description`);
   assert.ok(fs.existsSync(path.join(root, item.image.slice(1))), `${item.hanzi} image file should exist`);
@@ -95,7 +99,7 @@ const server = http.createServer((req, res) => {
 });
 
 (async () => {
-  assert.equal(htmlFiles.length, 43, 'expected all 43 planned HTML pages to be generated');
+  assert.equal(htmlFiles.length, 44, 'expected all 44 planned HTML pages to be generated');
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const baseUrl = `http://127.0.0.1:${server.address().port}`;
   const browser = await chromium.launch({ headless: true, channel: 'msedge' });
@@ -105,15 +109,21 @@ const server = http.createServer((req, res) => {
     page.on('pageerror', error => errors.push(error.message));
     page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
 
-    const assetPaths = ['/styles.css', '/script.js', '/favicon.svg', '/robots.txt', '/sitemap.xml'];
+    const assetPaths = ['/styles.css', '/script.js', '/favicon.svg', '/robots.txt', '/sitemap.xml', '/search-index.json'];
     for (const asset of assetPaths) assert.equal((await page.request.get(`${baseUrl}${asset}`)).status(), 200, `${asset} should load`);
     const robots = await (await page.request.get(`${baseUrl}/robots.txt`)).text();
     assert.match(robots, new RegExp(`Sitemap: ${domain.replaceAll('.', '\\.')}\\/sitemap\\.xml`));
 
     const sitemap = await (await page.request.get(`${baseUrl}/sitemap.xml`)).text();
     const sitemapRoutes = [...sitemap.matchAll(/<loc>https:\/\/chinese-ua\.pp\.ua([^<]*)<\/loc>/g)].map(match => match[1]);
-    const indexableRoutes = routes.filter(route => route !== '/china/');
+    const indexableRoutes = routes.filter(route => !['/china/', '/search/'].includes(route));
     assert.deepEqual([...sitemapRoutes].sort(), [...indexableRoutes].sort(), 'sitemap should contain only indexable canonical pages exactly once');
+    assert.match(sitemap, /^<\?xml version="1\.0" encoding="UTF-8"\?>\s*<urlset xmlns="http:\/\/www\.sitemaps\.org\/schemas\/sitemap\/0\.9">[\s\S]*<\/urlset>\s*$/);
+    assert.ok(sitemapRoutes.includes('/'), 'sitemap should include the homepage');
+    assert.ok(sitemapRoutes.includes('/hsk/hsk1/lesson-1/'), 'sitemap should include generated lesson pages');
+    assert.equal(new Set(sitemapRoutes).size, sitemapRoutes.length, 'sitemap URLs should be unique');
+    assert.doesNotMatch(sitemap, /localhost|127\.0\.0\.1/i, 'sitemap must not contain development URLs');
+    assert.ok(sitemapRoutes.every(route => !/[?#]/.test(route)), 'sitemap must not contain query or hash URLs');
     assert.equal(sitemapRoutes.includes('/china/'), false, 'placeholder cultural hub should stay out of sitemap');
 
     const notFoundResponse = await page.request.get(`${baseUrl}/404.html`);
@@ -144,9 +154,14 @@ const server = http.createServer((req, res) => {
       assert.equal(await page.locator('h1').count(), 1, `${route} should have one H1`);
       assert.ok((await page.title()).includes('Chinese UA'), `${route} should have a page title`);
       assert.ok((await page.locator('meta[name="description"]').getAttribute('content'))?.length > 50, `${route} should have a useful meta description`);
+      assert.equal(await page.locator('meta[charset]').getAttribute('charset'), 'utf-8', `${route} should declare UTF-8`);
+      assert.match(await page.locator('meta[name="viewport"]').getAttribute('content'), /width=device-width/);
       assert.equal(await page.locator('link[rel="canonical"]').getAttribute('href'), `${domain}${route}`);
+      assert.doesNotMatch(await page.locator('link[rel="canonical"]').getAttribute('href'), /localhost|127\.0\.0\.1|http:\/\/|www\./i);
+      const robotsContent = await page.locator('meta[name="robots"]').getAttribute('content');
+      assert.equal(robotsContent, ['/', '/china/', '/search/'].includes(route) ? (route === '/' ? 'index,follow' : 'noindex,follow') : 'index,follow', `${route} should have the appropriate robots directive`);
       for (const property of ['og:title', 'og:description', 'og:url']) assert.ok(await page.locator(`meta[property="${property}"]`).count(), `${route} is missing ${property}`);
-      if (!['/china/'].includes(route)) {
+      if (!['/china/', '/search/'].includes(route)) {
         assert.ok(await page.locator('meta[name="twitter:title"]').count(), `${route} should expose a Twitter title`);
         assert.ok(await page.locator('meta[name="twitter:description"]').count(), `${route} should expose a Twitter description`);
         const hasSocialImage = fs.existsSync(path.join(root, 'images', 'social', 'chinese-ua-social.webp'));
@@ -166,6 +181,7 @@ const server = http.createServer((req, res) => {
       if (route === '/') {
         const schemas = await page.locator('script[type="application/ld+json"]').allTextContents();
         assert.ok(schemas.some(schema => JSON.parse(schema)['@type'] === 'WebSite'), 'homepage should expose WebSite JSON-LD');
+        assert.ok(schemas.some(schema => JSON.parse(schema)['@type'] === 'Organization'), 'homepage should expose Organization JSON-LD');
         assert.ok(!schemas.some(schema => JSON.stringify(JSON.parse(schema)).includes('SearchAction')), 'WebSite should not claim a search action before site search exists');
       }
       if (route.startsWith('/hsk/hsk1/lesson-')) {
@@ -193,6 +209,12 @@ const server = http.createServer((req, res) => {
       }
       if (route === '/china/') {
         assert.equal(await page.locator('meta[name="robots"]').getAttribute('content'), 'noindex,follow');
+      }
+      if (route === '/search/') {
+        assert.equal(await page.locator('meta[name="robots"]').getAttribute('content'), 'noindex,follow');
+        assert.equal(sitemapRoutes.includes('/search/'), false, 'search page should remain out of sitemap');
+        assert.equal(await page.locator('header a[href="/search/"]').textContent(), 'Пошук');
+        assert.equal(await page.locator('.site-search-form').getAttribute('role'), 'search');
       }
       if (route === '/privacy/') {
         const privacyText = await page.locator('main').innerText();
@@ -255,6 +277,32 @@ const server = http.createServer((req, res) => {
         await page.setViewportSize({ width, height: 844 });
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${route} overflows at ${width}px`);
       }
+    }
+
+    await page.goto(`${baseUrl}/search/?q=${encodeURIComponent('привіт')}`);
+    assert.equal(await page.locator('input[name="q"]').inputValue(), 'привіт', 'search query should survive page reload in the URL');
+    await page.locator('[data-search-results]').getByRole('link', { name: /你好/ }).first().waitFor();
+    const searchInput = page.locator('input[name="q"]');
+    await searchInput.fill('nǐ hǎo');
+    await page.locator('[data-search-results]').getByRole('link', { name: '你好' }).waitFor();
+    await searchInput.fill('ni hao');
+    await page.locator('[data-search-results]').getByRole('link', { name: '你好' }).waitFor();
+    await searchInput.fill('苹果');
+    await page.locator('[data-search-results]').getByRole('link', { name: '苹果' }).waitFor();
+    await searchInput.fill('pingguo');
+    await page.locator('[data-search-results]').getByRole('link', { name: '苹果' }).waitFor();
+    await searchInput.fill('яблуко');
+    await page.locator('[data-search-results]').getByRole('link', { name: '苹果' }).waitFor();
+    await searchInput.fill('HSK');
+    await page.locator('[data-search-results]').getByRole('link', { name: /HSK/ }).first().waitFor();
+    await searchInput.focus();
+    await page.keyboard.press('Enter');
+    await page.waitForURL(/\/search\/\?q=HSK/);
+    for (const width of [320, 375, 390, 430, 768, 1024, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(`${baseUrl}/search/?q=${encodeURIComponent('ni hao')}`);
+      await page.locator('[data-search-results] a').first().waitFor();
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `search page should not overflow at ${width}px`);
     }
 
     await page.setViewportSize({ width: 390, height: 844 });

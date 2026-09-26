@@ -12,6 +12,7 @@ const nav = [
   ['/vocabulary/', 'Слова'],
   ['/grammar/', 'Граматика'],
   ['/dialogues/', 'Діалоги'],
+  ['/search/', 'Пошук'],
   ['/china/', 'Культура'],
 ];
 
@@ -59,7 +60,7 @@ function head(page, route) {
   const canonical = urlFor(route);
   const description = page.description || `${page.title} — урок китайської мови українською з Pinyin, прикладами та практикою. Chinese UA.`;
   const title = page.metaTitle || `${page.title} | Chinese UA`;
-  const robotsMeta = page.robots ? `<meta name="robots" content="${esc(page.robots)}" />` : page.noindex ? '<meta name="robots" content="noindex,follow" />' : '';
+  const robotsMeta = page.robots ? `<meta name="robots" content="${esc(page.robots)}" />` : page.noindex ? '<meta name="robots" content="noindex,follow" />' : '<meta name="robots" content="index,follow" />';
   const socialImagePath = path.join(output, 'images', 'social', 'chinese-ua-social.webp');
   const socialImage = fs.existsSync(socialImagePath) ? `${domain}/images/social/chinese-ua-social.webp` : '';
   const crumbItems = route === '/' ? [] : [['Головна', '/'], ...route.split('/').filter(Boolean).map((part, index, parts) => {
@@ -68,6 +69,7 @@ function head(page, route) {
   })];
   const breadcrumbSchema = crumbItems.length ? `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: crumbItems.map(([name, item], index) => ({ '@type': 'ListItem', position: index + 1, name, item: urlFor(item) })) })}</script>` : '';
   const websiteSchema = route === '/' ? `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'WebSite', name: 'Chinese UA', url: `${domain}/`, inLanguage: 'uk' })}</script>` : '';
+  const organizationSchema = route === '/' ? `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'Organization', name: 'Chinese UA', url: `${domain}/`, description: 'Освітній проєкт із вивчення китайської мови для україномовних користувачів.', knowsLanguage: ['uk', 'zh'] })}</script>` : '';
   const lesson = route.match(/^hsk\/hsk1\/(lesson-[^/]+)\/$/) && hskLessons.find(item => item.slug === route.match(/^hsk\/hsk1\/(lesson-[^/]+)\/$/)[1]);
   const learningSchema = lesson ? `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'LearningResource', name: page.title, description, url: canonical, inLanguage: 'uk', learningResourceType: 'Lesson', educationalLevel: 'Beginner', teaches: lesson.goal, isPartOf: { '@type': 'Course', name: 'HSK 1: курс китайської для початківців', url: urlFor('hsk/hsk1/') } })}</script>` : '';
   const socialMeta = socialImage
@@ -92,6 +94,7 @@ function head(page, route) {
   <link rel="stylesheet" href="/styles.css" />
   ${breadcrumbSchema}
   ${websiteSchema}
+  ${organizationSchema}
   ${learningSchema}
 </head>`;
 }
@@ -174,6 +177,40 @@ function renderNotFound() {
   const page = { title: 'Сторінку не знайдено', description: 'Сторінку не знайдено. Перейдіть до головної, уроків HSK або словника Chinese UA.', lead: 'Можливо, адресу змінено або сторінка більше не існує.', robots: 'noindex' };
   const body = `<div class="container article-layout not-found-page"><div class="eyebrow">404</div><h1>Сторінку не знайдено</h1><p class="article-lead">Можливо, адресу змінено або сторінка більше не існує.</p><nav class="related-links" aria-label="Корисні сторінки"><a class="button primary" href="/">На головну</a><a class="button secondary" href="/hsk/">До HSK</a><a class="button secondary" href="/vocabulary/">До словника</a><a class="button secondary" href="/tools/flashcards/">До Flashcards</a></nav></div>`;
   return shell(page, '404.html', body);
+}
+
+function renderSearch(page, route) {
+  const body = `<div class="container article-layout search-page">${pageIntro(page, route, 'Пошук матеріалів')}<form class="site-search-form" action="/search/" method="get" role="search"><label for="siteSearchInput">Пошук китайських слів і уроків</label><div class="site-search-controls"><input id="siteSearchInput" type="search" name="q" autocomplete="off" placeholder="你好, nǐ hǎo, привіт…" aria-describedby="searchHelp" /><button class="button primary" type="submit">Знайти</button></div><p id="searchHelp">Шукайте ієрогліфами, Pinyin або українською.</p></form><p class="search-status" data-search-status aria-live="polite">Завантаження пошукового індексу…</p><div class="search-results" data-search-results></div><noscript><p>Для пошуку потрібен JavaScript. Ви можете відкрити <a href="/vocabulary/">тематичний словник</a> або <a href="/hsk/">уроки HSK</a>.</p></noscript></div>`;
+  return shell(page, route, body);
+}
+
+function searchIndex() {
+  const entries = [];
+  const add = entry => entries.push({
+    id: entry.id,
+    type: entry.type,
+    title: entry.title,
+    route: entry.route,
+    description: entry.description || '',
+    hanzi: entry.hanzi || '',
+    pinyin: entry.pinyin || '',
+    ukrainian: entry.ukrainian || '',
+    keywords: entry.keywords || '',
+  });
+  for (const page of hubs) {
+    if (['china/', 'contact/', 'privacy/', 'terms/', 'tools/'].includes(page.route)) continue;
+    add({ id: `article:${page.route}`, type: 'article', title: page.title, route: `/${page.route}`, description: page.description, keywords: page.lead });
+  }
+  for (const page of pinyinPages) add({ id: `article:pinyin:${page.slug}`, type: 'article', title: page.title, route: `/pinyin/${page.slug}/`, description: page.intro, keywords: page.intro });
+  for (const group of vocabulary) for (const item of group.words) add({
+    id: `vocabulary:${group.slug}:${item.hanzi}`, type: 'vocabulary', title: item.hanzi, route: `/vocabulary/${group.slug}/`,
+    description: `${item.pinyin} — ${item.uk}`, hanzi: item.hanzi, pinyin: item.pinyin, ukrainian: item.uk,
+    keywords: `${group.title} ${item.example || ''} ${item.examplePinyin || ''} ${item.exampleUk || ''}`,
+  });
+  for (const item of grammar) add({ id: `grammar:${item.slug}`, type: 'grammar', title: item.title, route: `/grammar/${item.slug}/`, description: item.role, hanzi: item.pattern, ukrainian: `${item.role} ${item.examples.map(example => example.uk).join(' ')}`, pinyin: item.examples.map(example => example.pinyin).join(' '), keywords: item.exercise });
+  for (const item of dialogues) add({ id: `dialogue:${item.slug}`, type: 'dialogue', title: item.title, route: `/dialogues/${item.slug}/`, description: item.scene, hanzi: item.lines.map(line => line.hanzi).join(' '), pinyin: item.lines.map(line => line.pinyin).join(' '), ukrainian: item.lines.map(line => line.uk).join(' '), keywords: item.scene });
+  for (const item of hskLessons) add({ id: `lesson:${item.slug}`, type: 'lesson', title: `HSK 1 · ${item.title}`, route: `/hsk/hsk1/${item.slug}/`, description: item.goal, hanzi: [...item.words.map(word => word.hanzi), ...item.dialogue.map(line => line.hanzi)].join(' '), pinyin: [...item.words.map(word => word.pinyin), ...item.dialogue.map(line => line.pinyin)].join(' '), ukrainian: [...item.words.map(word => word.uk), ...item.dialogue.map(line => line.uk)].join(' '), keywords: `${item.grammar} ${item.pronunciation}` });
+  return entries;
 }
 
 function flashcardWords() {
@@ -305,11 +342,12 @@ function renderHome() {
 }
 
 const pageByRoute = new Map();
-function addPage(route, title, description, lead = description, metaTitle = null) { pageByRoute.set(route, { route, title, description, lead, metaTitle, noindex: route === 'china/' }); }
+function addPage(route, title, description, lead = description, metaTitle = null) { pageByRoute.set(route, { route, title, description, lead, metaTitle, noindex: route === 'china/' || route === 'search/' }); }
 addPage('/', 'Китайська мова для українців', 'Вивчайте китайську від нуля українською: Pinyin, HSK, граматика, тематичні слова й діалоги. Безкоштовні уроки Chinese UA.', 'Вивчайте китайську від нуля — з поясненнями українською.');
 for (const page of hubs) addPage(page.route, page.title, page.description, page.lead);
 pageByRoute.set('tools/', { ...pageByRoute.get('tools/'), description: 'Відкрийте Flashcards Chinese UA для повторення слів і збереження особистого прогресу у браузері.', lead: 'Наразі доступні картки для повторення. Інші інструменти з’являтимуться окремо після завершення розробки.' });
 addPage('tools/flashcards/', 'Картки для вивчення китайських слів', 'Повторюйте китайські слова за темами. Позначайте слова, які вже знаєте, і повертайтеся до складних.', 'Повторюйте китайські слова за темами. Позначайте слова, які вже знаєте, і повертайтеся до складних.', 'Картки китайських слів українською | Chinese UA');
+addPage('search/', 'Пошук китайських слів і уроків', 'Знайдіть китайське слово, Pinyin, український переклад, урок HSK, граматику чи діалог.', 'Шукайте китайською, Pinyin або українською.');
 for (const item of pinyinPages) addPage(`pinyin/${item.slug}/`, item.title, `${item.intro} Приклади й пояснення українською.`, item.intro);
 for (const item of vocabulary) addPage(`vocabulary/${item.slug}/`, item.title, `${item.intro} Китайські ієрогліфи, Pinyin, переклад і приклади.`, item.intro);
 for (const item of grammar) addPage(`grammar/${item.slug}/`, item.title, `${item.role} Модель, приклади, типові помилки та вправа українською.`, item.role);
@@ -322,6 +360,7 @@ function build() {
   pages.push({ route: '/', render: renderHome });
   for (const hub of hubs) pages.push({ route: hub.route, render: () => renderHub(hub, hub.route) });
   pages.push({ route: 'tools/flashcards/', render: () => renderFlashcards(pageByRoute.get('tools/flashcards/'), 'tools/flashcards/') });
+  pages.push({ route: 'search/', render: () => renderSearch(pageByRoute.get('search/'), 'search/') });
   for (const item of pinyinPages) pages.push({ route: `pinyin/${item.slug}/`, render: () => renderPinyin(item) });
   for (const item of vocabulary) pages.push({ route: `vocabulary/${item.slug}/`, render: () => renderVocabulary(item) });
   for (const item of grammar) pages.push({ route: `grammar/${item.slug}/`, render: () => renderGrammar(item) });
@@ -336,12 +375,13 @@ function build() {
   }
   fs.mkdirSync(path.join(output, 'data'), { recursive: true });
   fs.writeFileSync(path.join(output, 'data', 'vocabulary.json'), `${JSON.stringify(flashcardWords(), null, 2)}\n`, 'utf8');
+  fs.writeFileSync(path.join(output, 'search-index.json'), `${JSON.stringify(searchIndex(), null, 2)}\n`, 'utf8');
   fs.writeFileSync(path.join(output, '404.html'), renderNotFound(), 'utf8');
   for (const legacyPage of ['pinyin-tones.html', 'first-phrases.html', 'numbers-prices.html']) {
     const legacyFile = path.join(output, legacyPage);
     if (fs.existsSync(legacyFile)) fs.unlinkSync(legacyFile);
   }
-  const urls = pages.filter(page => !pageByRoute.get(page.route)?.noindex).map(page => `  <url><loc>${urlFor(page.route)}</loc></url>`).join('\n');
+  const urls = pages.filter(page => !pageByRoute.get(page.route)?.noindex && !pageByRoute.get(page.route)?.robots).map(page => `  <url><loc>${urlFor(page.route)}</loc></url>`).join('\n');
   fs.writeFileSync(path.join(output, 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`, 'utf8');
   fs.writeFileSync(path.join(output, '_redirects'), [
     '/pinyin-tones.html /pinyin/tones/ 301',
@@ -352,5 +392,5 @@ function build() {
   console.log(`Generated ${pages.length} HTML pages in public/.`);
 }
 
-module.exports = { build, validateVocabularyImages, wordCard, renderVocabulary, flashcardWords };
+module.exports = { build, validateVocabularyImages, wordCard, renderVocabulary, flashcardWords, searchIndex };
 if (require.main === module) build();

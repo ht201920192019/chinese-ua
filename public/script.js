@@ -553,6 +553,48 @@ async function initializeFlashcards(app) {
 
 document.querySelectorAll('[data-flashcard-app]').forEach(initializeFlashcards);
 
+async function initializeSiteSearch() {
+  const form = document.querySelector('.site-search-form');
+  if (!form) return;
+  const input = form.querySelector('input[name="q"]');
+  const status = document.querySelector('[data-search-status]');
+  const results = document.querySelector('[data-search-results]');
+  const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+  const normalize = value => String(value ?? '').toLocaleLowerCase('uk').normalize('NFD').replace(/\p{M}/gu, '').replace(/\s+/g, ' ').trim();
+  const types = { lesson: 'Урок', vocabulary: 'Слово', grammar: 'Граматика', dialogue: 'Діалог', article: 'Матеріал' };
+  try {
+    const response = await fetch('/search-index.json');
+    if (!response.ok) throw new Error(`Search index request failed: ${response.status}`);
+    const index = await response.json();
+    if (!Array.isArray(index)) throw new Error('Search index is invalid');
+    const query = new URLSearchParams(window.location.search).get('q') || '';
+    input.value = query;
+    const search = () => {
+      const term = normalize(input.value);
+      results.replaceChildren();
+      if (!term) {
+        status.textContent = `Індекс містить ${index.length} навчальних матеріалів. Введіть слово або фразу.`;
+        return;
+      }
+      const matches = index.map(item => {
+        const fields = [item.title, item.description, item.hanzi, item.pinyin, item.ukrainian, item.keywords];
+        const normalizedFields = fields.map(normalize);
+        const score = normalizedFields.reduce((total, field, i) => total + (field === term ? 4 : field.includes(term) ? (i < 3 ? 2 : 1) : 0), 0);
+        return { item, score };
+      }).filter(match => match.score > 0).sort((a, b) => b.score - a.score || a.item.title.localeCompare(b.item.title, 'uk')).slice(0, 50);
+      status.textContent = matches.length ? `Знайдено: ${matches.length}${matches.length === 50 ? ' · показано перші 50' : ''}` : 'Нічого не знайдено. Спробуйте інше написання.';
+      results.innerHTML = matches.map(({ item }) => `<article class="search-result"><span class="search-result-type">${escape(types[item.type] || item.type)}</span><h2><a href="${escape(item.route)}">${escape(item.title)}</a></h2><p>${escape(item.description)}</p>${item.hanzi || item.pinyin || item.ukrainian ? `<p class="search-result-language"><b lang="zh-CN">${escape(item.hanzi)}</b>${item.pinyin ? `<span lang="zh-Latn">${escape(item.pinyin)}</span>` : ''}${item.ukrainian ? `<span>${escape(item.ukrainian)}</span>` : ''}</p>` : ''}</article>`).join('');
+    };
+    input.addEventListener('input', search);
+    form.addEventListener('submit', () => { input.value = input.value.trim(); });
+    search();
+  } catch {
+    status.textContent = 'Не вдалося завантажити пошуковий індекс. Перейдіть до словника або уроків HSK.';
+  }
+}
+
+initializeSiteSearch();
+
 if (speechAvailable) window.speechSynthesis.getVoices();
 document.querySelectorAll('[data-speak]').forEach(bindSpeechButton);
 window.addEventListener('pagehide', () => {
